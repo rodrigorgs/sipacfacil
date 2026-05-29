@@ -618,16 +618,6 @@
       }
     }
 
-    const linksWithIds = Array.from(document.querySelectorAll("#corpo a, #conteudo a")).filter((link) => {
-      return isDetailLink(link, "document") && extractDocumentIdFromLink(link);
-    });
-
-    if (linksWithIds.length === 1) {
-      return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(
-        extractDocumentIdFromLink(linksWithIds[0])
-      )}`;
-    }
-
     return null;
   }
 
