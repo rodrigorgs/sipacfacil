@@ -751,6 +751,22 @@
     };
   }
 
+  function getDocumentIdFromLocation() {
+    return new URLSearchParams(location.search).get("idDoc") || "";
+  }
+
+  function getDocumentPdfLink() {
+    const idDoc = getDocumentIdFromLocation();
+    if (!idDoc) {
+      return null;
+    }
+
+    return {
+      href: new URL(`/sipac/protocolo/documento/documento_visualizacao.jsf?imprimir=true&idDoc=${encodeURIComponent(idDoc)}`, location.origin).href,
+      label: "Baixar PDF"
+    };
+  }
+
   function parseSipacDate(value) {
     const match = String(value || "").match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
     if (!match) {
@@ -854,10 +870,11 @@
     const file = getDocumentFileLink();
     const primaryAction = file || getDocumentViewLink();
     const primaryActionLabel = file ? "Baixar arquivo" : "Exibir documento";
+    const pdfAction = file ? null : getDocumentPdfLink();
     const signatures = getSignatureSummary();
     const destination = getCurrentDestination();
 
-    if (!detailedSubject && !subject && !primaryAction && !signatures.totalCount && !destination) {
+    if (!detailedSubject && !subject && !primaryAction && !pdfAction && !signatures.totalCount && !destination) {
       return;
     }
 
@@ -870,11 +887,20 @@
           .join("")}</ul>`
       : '<div class="sipac-pr-muted">Nenhuma assinatura pendente.</div>';
 
+    const actionButtons = [
+      primaryAction && primaryAction.href
+        ? `<a class="sipac-pr-download-button" href="${escapeAttribute(primaryAction.href)}">${primaryActionLabel}</a>`
+        : "",
+      pdfAction && pdfAction.href
+        ? `<a class="sipac-pr-download-button sipac-pr-secondary-button" href="${escapeAttribute(pdfAction.href)}">${escapeHtml(pdfAction.label)}</a>`
+        : ""
+    ].filter(Boolean);
+
     summary.innerHTML = [
       `<div class="sipac-pr-doc-detail">${escapeHtml(detailedSubject || "Documento sem assunto detalhado")}</div>`,
       `<div class="sipac-pr-doc-subject">${escapeHtml(subject || "Assunto não informado")}</div>`,
-      primaryAction && primaryAction.href
-        ? `<a class="sipac-pr-download-button" href="${escapeAttribute(primaryAction.href)}">${primaryActionLabel}</a>`
+      actionButtons.length
+        ? `<div class="sipac-pr-action-row">${actionButtons.join("")}</div>`
         : '<div class="sipac-pr-muted">Documento principal não encontrado.</div>',
       '<div class="sipac-pr-summary-grid">',
       '<div class="sipac-pr-summary-panel">',

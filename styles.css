@@ -161,6 +161,13 @@ table.sipac-pr-document-results a.sipac-pr-detail-button img {
   margin-bottom: 12px;
 }
 
+#sipac-pr-document-summary .sipac-pr-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 #sipac-pr-document-summary .sipac-pr-download-button {
   background: #1f5e99;
   border: 1px solid #164a7a;
@@ -169,7 +176,6 @@ table.sipac-pr-document-results a.sipac-pr-detail-button img {
   display: inline-block;
   font-size: 13px;
   font-weight: bold;
-  margin-bottom: 12px;
   padding: 8px 12px;
   text-decoration: none;
 }
@@ -177,6 +183,17 @@ table.sipac-pr-document-results a.sipac-pr-detail-button img {
 #sipac-pr-document-summary .sipac-pr-download-button:hover {
   background: #174f82;
   color: #fff;
+}
+
+#sipac-pr-document-summary .sipac-pr-secondary-button {
+  background: #fff;
+  border-color: #9bbbd7;
+  color: #1f5e99;
+}
+
+#sipac-pr-document-summary .sipac-pr-secondary-button:hover {
+  background: #e8f2fb;
+  color: #174f82;
 }
 
 #sipac-pr-document-summary .sipac-pr-summary-grid {
