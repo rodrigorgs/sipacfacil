@@ -1,13 +1,29 @@
 # Consulta de Processo SIPAC UFBA
 
-Extensão Chrome MV3 que adiciona, no portal público do SIPAC/UFBA, um campo de consulta rápida de número de protocolo na área de **Editais Recentes**.
+Extensão Chrome MV3 que adiciona um campo de consulta rápida de número de protocolo ao SIPAC/UFBA.
 
-Ao colar um protocolo, a extensão:
+No portal público, o painel aparece na área de **Editais Recentes**. No Portal Administrativo autenticado, o painel aparece no topo do conteúdo e usa a sessão do usuário logado.
+
+O painel tem duas buscas independentes:
+
+- **Processo**, para números de protocolo associados a processos.
+- **Documento**, para números de protocolo associados a documentos.
+
+Ao colar um protocolo de processo no portal público, a extensão:
 
 1. interpreta o número no formato `23066.000000/2026-00`;
 2. preenche a busca oficial de processos do próprio SIPAC;
 3. envia o formulário oficial;
 4. tenta abrir automaticamente o link do processo quando a tela de resultado apresenta um único item correspondente.
+
+Ao colar um protocolo de documento no portal público, a extensão preenche e envia o formulário oficial `documentosForm`.
+
+Ao colar um protocolo no Portal Administrativo, a extensão:
+
+1. interpreta o número no mesmo formato;
+2. abre a consulta autenticada de processo ou documento;
+3. preenche os campos internos do formulário autenticado;
+4. submete a busca usando a sessão já autenticada do navegador.
 
 ## Instalação local
 
@@ -22,12 +38,13 @@ Ao colar um protocolo, a extensão:
 
 ## Uso
 
-Acesse `https://sipac.ufba.br/` ou `https://sipac.ufba.br/public/jsp/portal.jsf` e cole o número do protocolo no campo **Consulta rápida de protocolo**.
+Acesse `https://sipac.ufba.br/`, `https://sipac.ufba.br/public/jsp/portal.jsf` ou, após login, `https://sipac.ufba.br/sipac/portal_administrativo/index.jsf` e cole o número do protocolo no campo **Consulta rápida de protocolo**.
 
 Também é possível pressionar `Enter` ou clicar em **Consultar**.
 
 ## Observações
 
-- A extensão usa o formulário público já presente no portal; ela não usa login, senha nem APIs privadas.
+- A extensão não armazena login ou senha. No Portal Administrativo, ela apenas reaproveita a sessão já aberta no Chrome.
+- No portal público, a extensão usa o formulário público já presente no portal; ela não usa APIs privadas.
 - Se o SIPAC retornar mais de um resultado, a extensão evita escolher sozinha e deixa a página de resultados aberta.
 - Caso o protocolo seja colado apenas com números, a extensão tenta inferir o formato padrão da UFBA iniciado por `23066`.
