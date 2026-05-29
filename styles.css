@@ -1,0 +1,64 @@
+#sipac-protocolo-rapido {
+  background: #f7fbff;
+  border: 1px solid #b6d3ee;
+  border-radius: 6px;
+  box-sizing: border-box;
+  margin: 8px 0 10px;
+  padding: 10px;
+  width: 460px;
+}
+
+#sipac-protocolo-rapido .sipac-pr-label {
+  color: #17395c;
+  display: block;
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+#sipac-protocolo-rapido .sipac-pr-row {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
+#sipac-protocolo-rapido input {
+  border: 1px solid #8fb2d5;
+  border-radius: 4px;
+  box-sizing: border-box;
+  flex: 1;
+  font-size: 13px;
+  height: 28px;
+  padding: 4px 8px;
+}
+
+#sipac-protocolo-rapido button {
+  background: #1f5e99;
+  border: 1px solid #164a7a;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  height: 28px;
+  padding: 0 10px;
+}
+
+#sipac-protocolo-rapido button:hover {
+  background: #174f82;
+}
+
+#sipac-protocolo-rapido .sipac-pr-status {
+  color: #3b5368;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 6px;
+}
+
+#sipac-protocolo-rapido .sipac-pr-status[data-kind="error"] {
+  color: #a12a2a;
+}
+
+#sipac-protocolo-rapido .sipac-pr-status[data-kind="loading"] {
+  color: #1f5e99;
+}
