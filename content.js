@@ -743,6 +743,24 @@
     };
   }
 
+  function getDocumentViewLink() {
+    const links = Array.from(document.querySelectorAll("a"));
+    const link = links.find((candidate) => /visualizar\s+documento/i.test(visibleText(candidate))) ||
+      links.find((candidate) => /visualizar\s+documento/i.test(getLinkHaystack(candidate)));
+
+    if (!link) {
+      return null;
+    }
+
+    const directUrl = getWindowOpenUrl(link);
+    const href = link.getAttribute("href");
+
+    return {
+      href: directUrl || (href && href !== "#" && !/^javascript:/i.test(href) ? new URL(href, location.href).href : null),
+      label: "Exibir documento"
+    };
+  }
+
   function parseSipacDate(value) {
     const match = String(value || "").match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
     if (!match) {
@@ -842,10 +860,12 @@
     const detailedSubject = getDocumentField("Assunto Detalhado");
     const subject = getDocumentField("Assunto");
     const file = getDocumentFileLink();
+    const primaryAction = file || getDocumentViewLink();
+    const primaryActionLabel = file ? "Baixar arquivo" : "Exibir documento";
     const signatures = getSignatureSummary();
     const destination = getCurrentDestination();
 
-    if (!detailedSubject && !subject && !file && !signatures.totalCount && !destination) {
+    if (!detailedSubject && !subject && !primaryAction && !signatures.totalCount && !destination) {
       return;
     }
 
@@ -861,9 +881,9 @@
     summary.innerHTML = [
       `<div class="sipac-pr-doc-detail">${escapeHtml(detailedSubject || "Documento sem assunto detalhado")}</div>`,
       `<div class="sipac-pr-doc-subject">${escapeHtml(subject || "Assunto não informado")}</div>`,
-      file && file.href
-        ? `<a class="sipac-pr-download-button" href="${escapeAttribute(file.href)}">Baixar arquivo</a>`
-        : '<div class="sipac-pr-muted">Arquivo principal não encontrado.</div>',
+      primaryAction && primaryAction.href
+        ? `<a class="sipac-pr-download-button" href="${escapeAttribute(primaryAction.href)}">${primaryActionLabel}</a>`
+        : '<div class="sipac-pr-muted">Documento principal não encontrado.</div>',
       '<div class="sipac-pr-summary-grid">',
       '<div class="sipac-pr-summary-panel">',
       '<div class="sipac-pr-summary-label">Assinaturas</div>',
