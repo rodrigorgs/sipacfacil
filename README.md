@@ -42,6 +42,16 @@ Acesse `https://sipac.ufba.br/`, `https://sipac.ufba.br/public/jsp/portal.jsf` o
 
 Também é possível pressionar `Enter` ou clicar em **Consultar**.
 
+## URL direta para documento
+
+Após login no SIPAC, também é possível abrir uma URL neste formato:
+
+```text
+https://sipac.ufba.br/sipac/portal_administrativo/index.jsf?doc=23066.029772/2026-10
+```
+
+A extensão detecta o parâmetro `doc`, busca o documento pelo protocolo, extrai o `idDoc` da ação da lupa e navega para a página de detalhes do documento.
+
 ## Observações
 
 - A extensão não armazena login ou senha. No Portal Administrativo, ela apenas reaproveita a sessão já aberta no Chrome.

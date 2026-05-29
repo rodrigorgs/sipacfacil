@@ -39,11 +39,17 @@
     }
   }
 
-  function setLastSearch(protocol, target) {
+  function setLastSearch(protocol, target, options) {
     try {
       sessionStorage.setItem(
         LAST_SEARCH_KEY,
-        JSON.stringify({ protocol, target: target || "process", digits: onlyDigits(protocol), at: Date.now() })
+        JSON.stringify({
+          protocol,
+          target: target || "process",
+          directOpen: Boolean(options && options.directOpen),
+          digits: onlyDigits(protocol),
+          at: Date.now()
+        })
       );
     } catch (_error) {
       // The extension still works without sessionStorage.
@@ -59,11 +65,17 @@
     }
   }
 
-  function setPendingAuthSearch(parts, target) {
+  function setPendingAuthSearch(parts, target, options) {
     try {
       sessionStorage.setItem(
         PENDING_AUTH_SEARCH_KEY,
-        JSON.stringify({ parts, target, protocol: formatProtocol(parts), at: Date.now() })
+        JSON.stringify({
+          parts,
+          target,
+          directOpen: Boolean(options && options.directOpen),
+          protocol: formatProtocol(parts),
+          at: Date.now()
+        })
       );
     } catch (_error) {
       // The user can still search manually if storage is unavailable.
@@ -264,14 +276,14 @@
     }
   }
 
-  function submitAuthenticatedSearch(parts, root, target) {
+  function submitAuthenticatedSearch(parts, root, target, options) {
     const searchUrl = AUTH_SEARCH_URLS[target];
     const isDocument = target === "document";
     const form = isDocument ? getDocumentForm() : getProcessForm();
     const expectedField = isDocument ? '[name="docsForm:radical"]' : '[name="processoForm:radical"]';
 
     if (!form || !form.querySelector(expectedField)) {
-      setPendingAuthSearch(parts, target);
+      setPendingAuthSearch(parts, target, options);
       setStatus(root, "Abrindo consulta autenticada...", "loading");
       location.assign(searchUrl);
       return;
@@ -297,7 +309,7 @@
       isDocument ? '[name="docsForm:buscaProtocolo"]' : '[name="processoForm:byIdentificadores"]',
       true
     );
-    setLastSearch(formatProtocol(parts), target);
+    setLastSearch(formatProtocol(parts), target, options);
     clearPendingAuthSearch();
     setStatus(
       root,
@@ -523,6 +535,25 @@
     }
 
     if (lastSearch.target === "document") {
+      if (lastSearch.directOpen) {
+        const pageText = visibleText(document.body);
+        const protocolWasRendered = onlyDigits(pageText).includes(lastSearch.digits);
+        const infoUrl = protocolWasRendered ? findDocumentInfoUrl(lastSearch.digits) : null;
+
+        if (infoUrl) {
+          clearLastSearch();
+          location.assign(infoUrl);
+          return true;
+        }
+
+        if (/nenhum|não encontrado|nao encontrado/i.test(pageText)) {
+          clearLastSearch();
+          return true;
+        }
+
+        return false;
+      }
+
       enhanceDocumentResults();
       clearLastSearch();
       return true;
@@ -557,6 +588,47 @@
       links.find((link) => isDetailLink(link, "document")) ||
       links.find((link) => /lupa\.gif|visuali[sz]ar|exibir|detalh/i.test(getLinkHaystack(link)))
     );
+  }
+
+  function extractDocumentIdFromLink(link) {
+    const haystack = `${link.getAttribute("onclick") || ""} ${link.getAttribute("href") || ""}`;
+    const idDocMatch = haystack.match(/(?:idDoc|idDocumento)=([0-9]+)/i);
+    if (idDocMatch) {
+      return idDocMatch[1];
+    }
+
+    const functionMatch = haystack.match(/(?:infoDocumento|visualizarDocumento|verDocumento|documento)[^0-9]{0,40}([0-9]{4,})/i);
+    return functionMatch ? functionMatch[1] : null;
+  }
+
+  function findDocumentInfoUrl(protocolDigits) {
+    const rows = Array.from(
+      document.querySelectorAll("#corpo tr, #corpo .listagem li, #corpo dl, #conteudo tr, #conteudo .listagem li, #conteudo dl")
+    );
+
+    for (const row of rows) {
+      if (!onlyDigits(visibleText(row)).includes(protocolDigits)) {
+        continue;
+      }
+
+      const link = findDocumentDetailLink(row);
+      const idDoc = link && extractDocumentIdFromLink(link);
+      if (idDoc) {
+        return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(idDoc)}`;
+      }
+    }
+
+    const linksWithIds = Array.from(document.querySelectorAll("#corpo a, #conteudo a")).filter((link) => {
+      return isDetailLink(link, "document") && extractDocumentIdFromLink(link);
+    });
+
+    if (linksWithIds.length === 1) {
+      return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(
+        extractDocumentIdFromLink(linksWithIds[0])
+      )}`;
+    }
+
+    return null;
   }
 
   function enhanceDocumentResults() {
@@ -824,7 +896,34 @@
 
     const hiddenRoot = document.createElement("div");
     hiddenRoot.innerHTML = '<span data-sipac-status></span>';
-    submitAuthenticatedSearch(pending.parts, hiddenRoot, pending.target || "process");
+    submitAuthenticatedSearch(pending.parts, hiddenRoot, pending.target || "process", {
+      directOpen: Boolean(pending.directOpen)
+    });
+  }
+
+  function handleDocumentUrl() {
+    if (!isAdminPortalPage) {
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    const protocol = params.get("doc");
+    if (!protocol) {
+      return;
+    }
+
+    const parts = parseProtocol(protocol);
+    if (!parts) {
+      return;
+    }
+
+    const cleanUrl = new URL(location.href);
+    cleanUrl.searchParams.delete("doc");
+    history.replaceState(null, "", cleanUrl.href);
+
+    const hiddenRoot = document.createElement("div");
+    hiddenRoot.innerHTML = '<span data-sipac-status></span>';
+    submitAuthenticatedSearch(parts, hiddenRoot, "document", { directOpen: true });
   }
 
   if (isPortalPage && !document.getElementById(ROOT_ID) && !insertPublicWidget()) {
@@ -861,6 +960,7 @@
     runPendingAuthenticatedSearch();
   }
 
+  handleDocumentUrl();
   enhanceDocumentResults();
   enhanceDocumentInfoPage();
   watchDocumentEnhancements();
