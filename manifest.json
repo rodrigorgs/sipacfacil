@@ -11,11 +11,5 @@
       "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": ["page-bridge.js"],
-      "matches": ["https://sipac.ufba.br/*"]
-    }
-  ],
   "host_permissions": ["https://sipac.ufba.br/*"]
 }

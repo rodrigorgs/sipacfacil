@@ -19,28 +19,15 @@
       location.pathname === "/sipac/menuUnidade.do");
   const isAuthenticatedSearchPage =
     isSipacPage && Object.values(AUTH_SEARCH_URLS).includes(location.pathname);
+  const isDocumentInfoPage =
+    isSipacPage && location.pathname === "/sipac/protocolo/consulta/info_documento.jsf";
 
   if (!isSipacPage) {
     return;
   }
 
-  injectWindowOpenRedirect();
-
   function onlyDigits(value) {
     return String(value || "").replace(/\D/g, "");
-  }
-
-  function injectWindowOpenRedirect() {
-    if (document.documentElement.dataset.sipacPrWindowOpenRedirect === "true") {
-      return;
-    }
-
-    document.documentElement.dataset.sipacPrWindowOpenRedirect = "true";
-
-    const script = document.createElement("script");
-    script.src = chrome.runtime.getURL("page-bridge.js");
-    (document.head || document.documentElement).appendChild(script);
-    script.addEventListener("load", () => script.remove(), { once: true });
   }
 
   function getLastSearch() {
@@ -464,35 +451,6 @@
     } ${link.getAttribute("onclick") || ""}`;
   }
 
-  function getPopupUrl(link) {
-    const onclick = link.getAttribute("onclick") || "";
-    const match = onclick.match(/window\.open\s*\(\s*['"]([^'"]+)['"]/i);
-    return match ? match[1] : null;
-  }
-
-  function openLinkInCurrentPage(link) {
-    const popupUrl = getPopupUrl(link);
-
-    if (popupUrl) {
-      location.assign(new URL(popupUrl, location.href).href);
-      return;
-    }
-
-    const href = link.getAttribute("href") || "";
-    if (href && href !== "#" && !/^javascript:/i.test(href)) {
-      location.assign(new URL(href, location.href).href);
-      return;
-    }
-
-    try {
-      sessionStorage.setItem("sipacProtocoloRapido:openInCurrentPageUntil", String(Date.now() + 5000));
-    } catch (_error) {
-      // Popup interception is best effort.
-    }
-
-    link.click();
-  }
-
   function isDetailLink(link, target) {
     const haystack = getLinkHaystack(link);
     const targetPattern =
@@ -564,6 +522,12 @@
       return true;
     }
 
+    if (lastSearch.target === "document") {
+      enhanceDocumentResults();
+      clearLastSearch();
+      return true;
+    }
+
     const pageText = visibleText(document.body);
     const protocolWasRendered = onlyDigits(pageText).includes(lastSearch.digits);
     const link = protocolWasRendered ? findProcessLink(lastSearch.digits, lastSearch.target) : null;
@@ -578,8 +542,266 @@
     }
 
     clearLastSearch();
-    openLinkInCurrentPage(link);
+    link.click();
     return true;
+  }
+
+  function isDocumentsFoundTable(table) {
+    const caption = table.querySelector("caption");
+    return caption && /documentos?\s+encontrad/i.test(visibleText(caption));
+  }
+
+  function findDocumentDetailLink(row) {
+    const links = Array.from(row.querySelectorAll("a"));
+    return (
+      links.find((link) => isDetailLink(link, "document")) ||
+      links.find((link) => /lupa\.gif|visuali[sz]ar|exibir|detalh/i.test(getLinkHaystack(link)))
+    );
+  }
+
+  function enhanceDocumentResults() {
+    const tables = Array.from(document.querySelectorAll("table")).filter(isDocumentsFoundTable);
+
+    tables.forEach((table) => {
+      if (table.dataset.sipacPrEnhanced === "true") {
+        return;
+      }
+
+      table.dataset.sipacPrEnhanced = "true";
+      table.classList.add("sipac-pr-document-results");
+
+      const caption = table.querySelector("caption");
+      if (caption) {
+        caption.textContent = "Documentos encontrados";
+      }
+
+      Array.from(table.querySelectorAll("tbody tr, tr")).forEach((row) => {
+        if (row.querySelector("th")) {
+          return;
+        }
+
+        row.classList.add("sipac-pr-document-row");
+
+        Array.from(row.cells || []).forEach((cell) => {
+          cell.classList.add("sipac-pr-document-cell");
+        });
+
+        const detailLink = findDocumentDetailLink(row);
+        if (!detailLink || detailLink.dataset.sipacPrDetailButton === "true") {
+          return;
+        }
+
+        detailLink.dataset.sipacPrDetailButton = "true";
+        detailLink.classList.add("sipac-pr-detail-button");
+        detailLink.setAttribute("title", "Visualizar detalhes do documento");
+
+        const image = detailLink.querySelector("img");
+        if (image) {
+          image.setAttribute("alt", "");
+          image.setAttribute("aria-hidden", "true");
+        }
+
+        if (!/visualizar detalhes/i.test(visibleText(detailLink))) {
+          const label = document.createElement("span");
+          label.className = "sipac-pr-detail-label";
+          label.textContent = "Visualizar detalhes";
+          detailLink.appendChild(label);
+        }
+      });
+    });
+  }
+
+  function getWindowOpenUrl(element) {
+    const onclick = element && (element.getAttribute("onclick") || element.getAttribute("onClick") || "");
+    const match = onclick.match(/window\.open\s*\(\s*['"]([^'"]+)['"]/i);
+    return match ? new URL(match[1], location.href).href : null;
+  }
+
+  function getTableByCaption(pattern) {
+    return Array.from(document.querySelectorAll("table")).find((table) => {
+      const caption = table.querySelector("caption");
+      return caption && pattern.test(visibleText(caption));
+    });
+  }
+
+  function getDocumentField(label) {
+    const documentTable = getTableByCaption(/^documento$/i);
+    if (!documentTable) {
+      return "";
+    }
+
+    const row = Array.from(documentTable.querySelectorAll("tr")).find((candidate) => {
+      const header = candidate.querySelector("th.rotulo, th");
+      return header && visibleText(header).replace(/:$/, "").trim().toLowerCase() === label.toLowerCase();
+    });
+
+    if (!row) {
+      return "";
+    }
+
+    const header = row.querySelector("th.rotulo, th");
+    const cells = Array.from(row.children);
+    const headerIndex = cells.indexOf(header);
+    const valueCell = cells.slice(headerIndex + 1).find((cell) => cell.tagName === "TD");
+    return valueCell ? visibleText(valueCell) : "";
+  }
+
+  function getDocumentFileLink() {
+    const documentTable = getTableByCaption(/^documento$/i);
+    if (!documentTable) {
+      return null;
+    }
+
+    const row = Array.from(documentTable.querySelectorAll("tr")).find((candidate) => {
+      const header = candidate.querySelector("th.rotulo, th");
+      return header && /^arquivo:?$/i.test(visibleText(header));
+    });
+    const link = row && row.querySelector("a");
+
+    if (!link) {
+      return null;
+    }
+
+    const directUrl = getWindowOpenUrl(link);
+    const href = link.getAttribute("href");
+
+    return {
+      href: directUrl || (href && href !== "#" ? new URL(href, location.href).href : null),
+      label: visibleText(link) || "Baixar arquivo"
+    };
+  }
+
+  function parseSipacDate(value) {
+    const match = String(value || "").match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
+    if (!match) {
+      return 0;
+    }
+
+    return new Date(
+      Number(match[3]),
+      Number(match[2]) - 1,
+      Number(match[1]),
+      Number(match[4] || 0),
+      Number(match[5] || 0)
+    ).getTime();
+  }
+
+  function getSignatureSummary() {
+    const table = getTableByCaption(/assinaturas\s+do\s+documento/i);
+    const rows = table ? Array.from(table.querySelectorAll("tbody tr")) : [];
+    const signatures = rows
+      .map((row) => {
+        const cells = Array.from(row.cells || []);
+        return {
+          name: visibleText(cells[1] || "").replace(/\s+/g, " ").trim(),
+          status: visibleText(cells[3] || "")
+        };
+      })
+      .filter((signature) => signature.name);
+
+    const signedCount = signatures.filter((signature) => /assinado\s+em/i.test(signature.status)).length;
+    const pending = signatures.filter((signature) => !/assinado\s+em/i.test(signature.status));
+
+    return {
+      signedCount,
+      totalCount: signatures.length,
+      pendingNames: pending.map((signature) => signature.name)
+    };
+  }
+
+  function getCurrentDestination() {
+    const table = getTableByCaption(/movimenta[çc][õo]es\s+do\s+documento/i);
+    const rows = table ? Array.from(table.querySelectorAll("tbody tr")) : [];
+    let selected = null;
+
+    rows.forEach((row) => {
+      const cells = Array.from(row.cells || []);
+      const destination = visibleText(cells[0] || "");
+      const sentAt = visibleText(cells[1] || "");
+      const receivedAt = visibleText(cells[3] || "");
+      const timestamp = Math.max(parseSipacDate(sentAt), parseSipacDate(receivedAt));
+
+      if (destination && (!selected || timestamp >= selected.timestamp)) {
+        selected = { destination, timestamp };
+      }
+    });
+
+    return selected ? selected.destination : "";
+  }
+
+  function enhanceDocumentInfoPage() {
+    if (!isDocumentInfoPage || document.getElementById("sipac-pr-document-summary")) {
+      return;
+    }
+
+    const content = document.querySelector("#conteudo") || document.body;
+    const title = content.querySelector("h2.title");
+    const detailedSubject = getDocumentField("Assunto Detalhado");
+    const subject = getDocumentField("Assunto");
+    const file = getDocumentFileLink();
+    const signatures = getSignatureSummary();
+    const destination = getCurrentDestination();
+
+    if (!detailedSubject && !subject && !file && !signatures.totalCount && !destination) {
+      return;
+    }
+
+    const summary = document.createElement("section");
+    summary.id = "sipac-pr-document-summary";
+
+    const pendingList = signatures.pendingNames.length
+      ? `<ul class="sipac-pr-pending-list">${signatures.pendingNames
+          .map((name) => `<li>${escapeHtml(name)}</li>`)
+          .join("")}</ul>`
+      : '<div class="sipac-pr-muted">Nenhuma assinatura pendente.</div>';
+
+    summary.innerHTML = [
+      `<div class="sipac-pr-doc-detail">${escapeHtml(detailedSubject || "Documento sem assunto detalhado")}</div>`,
+      `<div class="sipac-pr-doc-subject">${escapeHtml(subject || "Assunto não informado")}</div>`,
+      file && file.href
+        ? `<a class="sipac-pr-download-button" href="${escapeAttribute(file.href)}">Baixar arquivo</a>`
+        : '<div class="sipac-pr-muted">Arquivo principal não encontrado.</div>',
+      '<div class="sipac-pr-summary-grid">',
+      '<div class="sipac-pr-summary-panel">',
+      '<div class="sipac-pr-summary-label">Assinaturas</div>',
+      `<div class="sipac-pr-signature-count">${signatures.signedCount}/${signatures.totalCount}</div>`,
+      '<div class="sipac-pr-summary-label">Pendentes</div>',
+      pendingList,
+      "</div>",
+      '<div class="sipac-pr-summary-panel">',
+      '<div class="sipac-pr-summary-label">Último destino</div>',
+      `<div class="sipac-pr-destination">${escapeHtml(destination || "Destino não encontrado")}</div>`,
+      "</div>",
+      "</div>"
+    ].join("");
+
+    if (title) {
+      title.insertAdjacentElement("afterend", summary);
+    } else {
+      content.insertAdjacentElement("afterbegin", summary);
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/`/g, "&#96;");
+  }
+
+  function watchDocumentEnhancements() {
+    const observer = new MutationObserver(() => {
+      enhanceDocumentResults();
+      enhanceDocumentInfoPage();
+    });
+
+    observer.observe(document.documentElement, { childList: true, subtree: true });
   }
 
   function scheduleAutoOpen() {
@@ -639,5 +861,8 @@
     runPendingAuthenticatedSearch();
   }
 
+  enhanceDocumentResults();
+  enhanceDocumentInfoPage();
+  watchDocumentEnhancements();
   scheduleAutoOpen();
 })();
