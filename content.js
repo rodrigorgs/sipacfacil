@@ -24,8 +24,23 @@
     return;
   }
 
+  injectWindowOpenRedirect();
+
   function onlyDigits(value) {
     return String(value || "").replace(/\D/g, "");
+  }
+
+  function injectWindowOpenRedirect() {
+    if (document.documentElement.dataset.sipacPrWindowOpenRedirect === "true") {
+      return;
+    }
+
+    document.documentElement.dataset.sipacPrWindowOpenRedirect = "true";
+
+    const script = document.createElement("script");
+    script.src = chrome.runtime.getURL("page-bridge.js");
+    (document.head || document.documentElement).appendChild(script);
+    script.addEventListener("load", () => script.remove(), { once: true });
   }
 
   function getLastSearch() {
@@ -428,20 +443,69 @@
   function isActionableProcessLink(link) {
     const haystack = getLinkHaystack(link);
 
-    if (/listaEditais|portal\.jsf|javascript:void/i.test(haystack)) {
+    if (/listaEditais|portal\.jsf/i.test(haystack)) {
       return false;
     }
 
-    return /visuali[sz]ar|detalhar|processo|documento|protocolo|jsfcljs|public/i.test(haystack);
+    return /visuali[sz]ar|exibir|detalh|processo|documento|protocolo|lupa|jsfcljs|public/i.test(haystack);
   }
 
   function getLinkHaystack(link) {
     const imageText = Array.from(link.querySelectorAll("img"))
-      .map((image) => `${image.getAttribute("alt") || ""} ${image.getAttribute("title") || ""}`)
+      .map(
+        (image) =>
+          `${image.getAttribute("alt") || ""} ${image.getAttribute("title") || ""} ${
+            image.getAttribute("src") || ""
+          }`
+      )
       .join(" ");
     return `${visibleText(link)} ${imageText} ${link.getAttribute("title") || ""} ${
       link.getAttribute("href") || ""
     } ${link.getAttribute("onclick") || ""}`;
+  }
+
+  function getPopupUrl(link) {
+    const onclick = link.getAttribute("onclick") || "";
+    const match = onclick.match(/window\.open\s*\(\s*['"]([^'"]+)['"]/i);
+    return match ? match[1] : null;
+  }
+
+  function openLinkInCurrentPage(link) {
+    const popupUrl = getPopupUrl(link);
+
+    if (popupUrl) {
+      location.assign(new URL(popupUrl, location.href).href);
+      return;
+    }
+
+    const href = link.getAttribute("href") || "";
+    if (href && href !== "#" && !/^javascript:/i.test(href)) {
+      location.assign(new URL(href, location.href).href);
+      return;
+    }
+
+    try {
+      sessionStorage.setItem("sipacProtocoloRapido:openInCurrentPageUntil", String(Date.now() + 5000));
+    } catch (_error) {
+      // Popup interception is best effort.
+    }
+
+    link.click();
+  }
+
+  function isDetailLink(link, target) {
+    const haystack = getLinkHaystack(link);
+    const targetPattern =
+      target === "document" ? /documento|doc\b|docu/i : /processo|proc\b/i;
+
+    if (/cancelar|imprimir|pdf|voltar|remover|excluir|alterar|enviar|receber/i.test(haystack)) {
+      return false;
+    }
+
+    return (
+      /lupa\.gif|visuali[sz]ar|exibir|detalh/i.test(haystack) &&
+      (targetPattern.test(haystack) || !/processo|documento|proc\b|doc\b|docu/i.test(haystack))
+    );
   }
 
   function findProcessLink(protocolDigits, target) {
@@ -449,7 +513,9 @@
       document.querySelectorAll("#corpo tr, #corpo .listagem li, #corpo dl, #conteudo tr, #conteudo .listagem li, #conteudo dl")
     );
     const preferredPattern =
-      target === "document" ? /visuali[sz]ar|detalhar|documento/i : /visuali[sz]ar|detalhar|processo/i;
+      target === "document"
+        ? /lupa\.gif|visuali[sz]ar|exibir|detalh|documento/i
+        : /lupa\.gif|visuali[sz]ar|exibir|detalh|processo/i;
 
     for (const row of rows) {
       if (!onlyDigits(visibleText(row)).includes(protocolDigits)) {
@@ -457,20 +523,35 @@
       }
 
       const links = Array.from(row.querySelectorAll("a")).filter(isActionableProcessLink);
-      if (links.length === 1) {
-        return links[0];
-      }
-
-      const preferred = links.find((link) => preferredPattern.test(getLinkHaystack(link)));
+      const detailLinks = links.filter((link) => isDetailLink(link, target));
+      const preferred = detailLinks.find((link) => preferredPattern.test(getLinkHaystack(link)));
       if (preferred) {
         return preferred;
       }
+
+      if (detailLinks.length === 1) {
+        return detailLinks[0];
+      }
+
+      if (links.length === 1) {
+        return links[0];
+      }
     }
 
-    const linksWithProtocol = Array.from(document.querySelectorAll("#corpo a, #conteudo a")).filter((link) => {
-      const haystack = getLinkHaystack(link);
-      return onlyDigits(haystack).includes(protocolDigits) && isActionableProcessLink(link);
-    });
+    const detailLinks = Array.from(document.querySelectorAll("#corpo a, #conteudo a")).filter((link) =>
+      isDetailLink(link, target)
+    );
+
+    if (detailLinks.length === 1) {
+      return detailLinks[0];
+    }
+
+    const linksWithProtocol = Array.from(document.querySelectorAll("#corpo a, #conteudo a")).filter(
+      (link) => {
+        const haystack = getLinkHaystack(link);
+        return onlyDigits(haystack).includes(protocolDigits) && isActionableProcessLink(link);
+      }
+    );
 
     return linksWithProtocol.length === 1 ? linksWithProtocol[0] : null;
   }
@@ -497,7 +578,7 @@
     }
 
     clearLastSearch();
-    link.click();
+    openLinkInCurrentPage(link);
     return true;
   }
 
