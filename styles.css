@@ -227,3 +227,17 @@ table.sipac-pr-document-results a.sipac-pr-detail-button img {
   color: #657789;
   font-size: 12px;
 }
+
+body.sipac-pr-document-info-page #container-popup,
+body.sipac-pr-document-info-page #conteudo {
+  box-sizing: border-box;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: 800px !important;
+  width: min(100%, 800px) !important;
+}
+
+body.sipac-pr-document-info-page #conteudo {
+  padding-left: 10px;
+  padding-right: 10px;
+}

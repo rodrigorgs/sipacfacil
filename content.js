@@ -855,6 +855,8 @@
       return;
     }
 
+    document.body.classList.add("sipac-pr-document-info-page");
+
     const content = document.querySelector("#conteudo") || document.body;
     const title = content.querySelector("h2.title");
     const detailedSubject = getDocumentField("Assunto Detalhado");
