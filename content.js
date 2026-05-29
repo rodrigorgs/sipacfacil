@@ -764,12 +764,16 @@
     const signatures = rows
       .map((row) => {
         const cells = Array.from(row.cells || []);
+        if (cells.length < 4) {
+          return null;
+        }
+
         return {
-          name: visibleText(cells[1] || "").replace(/\s+/g, " ").trim(),
+          name: cleanSignerName(visibleText(cells[1] || "")),
           status: visibleText(cells[3] || "")
         };
       })
-      .filter((signature) => signature.name);
+      .filter((signature) => signature && signature.name && /assinado|não assinado|nao assinado/i.test(signature.status));
 
     const signedCount = signatures.filter((signature) => /assinado\s+em/i.test(signature.status)).length;
     const pending = signatures.filter((signature) => !/assinado\s+em/i.test(signature.status));
@@ -777,8 +781,35 @@
     return {
       signedCount,
       totalCount: signatures.length,
-      pendingNames: pending.map((signature) => signature.name)
+      pendingNames: pending.map((signature) => toPortugueseTitleCase(signature.name))
     };
+  }
+
+  function cleanSignerName(value) {
+    return String(value || "")
+      .replace(/\([^)]*\)/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function toPortugueseTitleCase(value) {
+    const lowerCaseWords = new Set(["a", "as", "e", "o", "os", "de", "da", "das", "do", "dos"]);
+
+    return String(value || "")
+      .toLocaleLowerCase("pt-BR")
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((word, index) => {
+        if (index > 0 && lowerCaseWords.has(word)) {
+          return word;
+        }
+
+        return word
+          .split("-")
+          .map((part) => part.charAt(0).toLocaleUpperCase("pt-BR") + part.slice(1))
+          .join("-");
+      })
+      .join(" ");
   }
 
   function getCurrentDestination() {
