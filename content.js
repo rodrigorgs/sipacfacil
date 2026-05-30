@@ -249,7 +249,7 @@
     ].forEach((name) => setCheckbox(form, `[name="${name}"]`, false));
 
     const protocol = formatProtocol(parts);
-    setLastSearch(protocol, "document");
+    setLastSearch(protocol, "document", { directOpen: true });
     setStatus(root, `Consultando documento ${protocol}...`, "loading");
 
     const submitButton = Array.from(form.querySelectorAll('input[type="submit"]')).find((button) =>
@@ -346,7 +346,7 @@
     }
 
     if (mode === "authenticated") {
-      submitAuthenticatedSearch(parts, root, target);
+      submitAuthenticatedSearch(parts, root, target, { directOpen: target === "document" });
       return;
     }
 
