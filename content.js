@@ -568,6 +568,55 @@
     return linksWithProtocol.length === 1 ? linksWithProtocol[0] : null;
   }
 
+  function removeSearchChrome(target, preserveElement) {
+    document.querySelectorAll("div.descricaoOperacao").forEach((element) => element.remove());
+
+    const form = target === "document" ? getDocumentForm() : getProcessForm();
+    if (!form) {
+      return;
+    }
+
+    if (target === "process") {
+      const resultsTable = form.querySelector("#processoForm\\:tabelaProcessos");
+      if (!resultsTable) {
+        return;
+      }
+
+      Array.from(form.children).forEach((child) => {
+        if (child !== resultsTable && !child.contains(resultsTable)) {
+          child.remove();
+        }
+      });
+
+      return;
+    }
+
+    Array.from(form.querySelectorAll("table")).forEach((table) => {
+      if (preserveElement && table.contains(preserveElement)) {
+        return;
+      }
+
+      const tableText = visibleText(table);
+      const hasSearchInputs = table.querySelector("input, select, textarea");
+      const looksLikeResult = /encontrad|resultado|processos?|documentos?/i.test(tableText) &&
+        /lupa|visuali[sz]ar|detalh|protocolo/i.test(tableText);
+
+      if (hasSearchInputs && !looksLikeResult) {
+        table.remove();
+      }
+    });
+
+    Array.from(form.querySelectorAll('input[type="submit"], input[type="button"], button')).forEach((button) => {
+      if (preserveElement && button.contains(preserveElement)) {
+        return;
+      }
+
+      if (/buscar|consultar|cancelar/i.test(button.value || button.textContent || "")) {
+        button.remove();
+      }
+    });
+  }
+
   function tryAutoOpenResult() {
     const lastSearch = getLastSearch();
 
@@ -606,6 +655,7 @@
 
     if (!link) {
       if (/nenhum|não encontrado|nao encontrado/i.test(pageText)) {
+        removeSearchChrome(lastSearch.target);
         clearLastSearch();
         return true;
       }
@@ -613,8 +663,8 @@
       return false;
     }
 
+    removeSearchChrome(lastSearch.target, link);
     clearLastSearch();
-    link.click();
     return true;
   }
 
