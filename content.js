@@ -554,7 +554,6 @@
         return false;
       }
 
-      enhanceDocumentResults();
       clearLastSearch();
       return true;
     }
@@ -575,11 +574,6 @@
     clearLastSearch();
     link.click();
     return true;
-  }
-
-  function isDocumentsFoundTable(table) {
-    const caption = table.querySelector("caption");
-    return caption && /documentos?\s+encontrad/i.test(visibleText(caption));
   }
 
   function findDocumentDetailLink(row) {
@@ -619,58 +613,6 @@
     }
 
     return null;
-  }
-
-  function enhanceDocumentResults() {
-    const tables = Array.from(document.querySelectorAll("table")).filter(isDocumentsFoundTable);
-
-    tables.forEach((table) => {
-      if (table.dataset.sipacPrEnhanced === "true") {
-        return;
-      }
-
-      table.dataset.sipacPrEnhanced = "true";
-      table.classList.add("sipac-pr-document-results");
-
-      const caption = table.querySelector("caption");
-      if (caption) {
-        caption.textContent = "Documentos encontrados";
-      }
-
-      Array.from(table.querySelectorAll("tbody tr, tr")).forEach((row) => {
-        if (row.querySelector("th")) {
-          return;
-        }
-
-        row.classList.add("sipac-pr-document-row");
-
-        Array.from(row.cells || []).forEach((cell) => {
-          cell.classList.add("sipac-pr-document-cell");
-        });
-
-        const detailLink = findDocumentDetailLink(row);
-        if (!detailLink || detailLink.dataset.sipacPrDetailButton === "true") {
-          return;
-        }
-
-        detailLink.dataset.sipacPrDetailButton = "true";
-        detailLink.classList.add("sipac-pr-detail-button");
-        detailLink.setAttribute("title", "Visualizar detalhes do documento");
-
-        const image = detailLink.querySelector("img");
-        if (image) {
-          image.setAttribute("alt", "");
-          image.setAttribute("aria-hidden", "true");
-        }
-
-        if (!/visualizar detalhes/i.test(visibleText(detailLink))) {
-          const label = document.createElement("span");
-          label.className = "sipac-pr-detail-label";
-          label.textContent = "Visualizar detalhes";
-          detailLink.appendChild(label);
-        }
-      });
-    });
   }
 
   function getWindowOpenUrl(element) {
@@ -938,7 +880,6 @@
 
   function watchDocumentEnhancements() {
     const observer = new MutationObserver(() => {
-      enhanceDocumentResults();
       enhanceDocumentInfoPage();
     });
 
@@ -1030,7 +971,6 @@
   }
 
   handleDocumentUrl();
-  enhanceDocumentResults();
   enhanceDocumentInfoPage();
   watchDocumentEnhancements();
   scheduleAutoOpen();
