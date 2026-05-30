@@ -709,6 +709,35 @@
     };
   }
 
+  function copyTextToClipboard(value) {
+    const text = String(value || "").trim();
+    if (!text) {
+      return Promise.reject(new Error("Texto vazio"));
+    }
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise((resolve, reject) => {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      try {
+        document.execCommand("copy") ? resolve() : reject(new Error("Falha ao copiar"));
+      } catch (error) {
+        reject(error);
+      } finally {
+        textarea.remove();
+      }
+    });
+  }
+
   function parseSipacDate(value) {
     const match = String(value || "").match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/);
     if (!match) {
@@ -807,6 +836,7 @@
 
     const content = document.querySelector("#conteudo") || document.body;
     const title = content.querySelector("h2.title");
+    const protocol = getDocumentField("Protocolo");
     const detailedSubject = getDocumentField("Assunto Detalhado");
     const subject = getDocumentField("Assunto");
     const file = getDocumentFileLink();
@@ -816,7 +846,7 @@
     const signatures = getSignatureSummary();
     const destination = getCurrentDestination();
 
-    if (!detailedSubject && !subject && !primaryAction && !pdfAction && !signatures.totalCount && !destination) {
+    if (!protocol && !detailedSubject && !subject && !primaryAction && !pdfAction && !signatures.totalCount && !destination) {
       return;
     }
 
@@ -840,6 +870,9 @@
 
     summary.innerHTML = [
       `<div class="sipac-pr-doc-detail">${escapeHtml(detailedSubject || "Documento sem assunto detalhado")}</div>`,
+      protocol
+        ? `<div class="sipac-pr-protocol"><span class="sipac-pr-protocol-label">Protocolo:</span> <span class="sipac-pr-protocol-number">${escapeHtml(protocol)}</span><button class="sipac-pr-copy-button fa fa-copy" type="button" data-sipac-copy-protocol="${escapeAttribute(protocol)}" title="Copiar número do protocolo" aria-label="Copiar número do protocolo"></button></div>`
+        : "",
       `<div class="sipac-pr-doc-subject">${escapeHtml(subject || "Assunto não informado")}</div>`,
       actionButtons.length
         ? `<div class="sipac-pr-action-row">${actionButtons.join("")}</div>`
@@ -862,6 +895,29 @@
       title.insertAdjacentElement("afterend", summary);
     } else {
       content.insertAdjacentElement("afterbegin", summary);
+    }
+
+    const copyButton = summary.querySelector("[data-sipac-copy-protocol]");
+    if (copyButton) {
+      copyButton.addEventListener("click", () => {
+        copyTextToClipboard(copyButton.dataset.sipacCopyProtocol)
+          .then(() => {
+            copyButton.classList.add("sipac-pr-copied");
+            copyButton.setAttribute("title", "Copiado");
+            window.setTimeout(() => {
+              copyButton.classList.remove("sipac-pr-copied");
+              copyButton.setAttribute("title", "Copiar número do protocolo");
+            }, 1400);
+          })
+          .catch(() => {
+            copyButton.classList.add("sipac-pr-copy-error");
+            copyButton.setAttribute("title", "Erro ao copiar");
+            window.setTimeout(() => {
+              copyButton.classList.remove("sipac-pr-copy-error");
+              copyButton.setAttribute("title", "Copiar número do protocolo");
+            }, 1400);
+          });
+      });
     }
   }
 

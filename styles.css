@@ -87,6 +87,48 @@
   padding: 14px;
 }
 
+#sipac-pr-document-summary .sipac-pr-protocol {
+  align-items: center;
+  color: #4b6073;
+  display: inline-flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 4px;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+#sipac-pr-document-summary .sipac-pr-protocol-label {
+  color: #657789;
+  font-weight: bold;
+}
+
+#sipac-pr-document-summary .sipac-pr-protocol-number {
+  color: #4b6073;
+}
+
+#sipac-pr-document-summary .sipac-pr-copy-button {
+  background: transparent;
+  border: 0;
+  color: #657789;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 1px 3px;
+}
+
+#sipac-pr-document-summary .sipac-pr-copy-button:hover {
+  color: #1f5e99;
+}
+
+#sipac-pr-document-summary .sipac-pr-copy-button.sipac-pr-copied {
+  color: #2f7d32;
+}
+
+#sipac-pr-document-summary .sipac-pr-copy-button.sipac-pr-copy-error {
+  color: #b00020;
+}
+
 #sipac-pr-document-summary .sipac-pr-doc-detail {
   color: #102f4d;
   font-size: 20px;
