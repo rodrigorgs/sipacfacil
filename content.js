@@ -1010,13 +1010,17 @@
     });
   }
 
-  function handleDocumentUrl() {
+  function handleDirectProtocolUrl() {
     if (!isAdminPortalPage) {
       return;
     }
 
     const params = new URLSearchParams(location.search);
-    const protocol = params.get("doc");
+    const documentProtocol = params.get("doc");
+    const processProtocol = params.get("proc");
+    const protocol = documentProtocol || processProtocol;
+    const target = documentProtocol ? "document" : "process";
+
     if (!protocol) {
       return;
     }
@@ -1026,19 +1030,19 @@
       return;
     }
 
-    const cachedIdDoc = getCachedDocumentId(protocol);
-    if (cachedIdDoc) {
+    const cachedIdDoc = target === "document" ? getCachedDocumentId(protocol) : null;
+    if (target === "document" && cachedIdDoc) {
       location.replace(getDocumentInfoUrlById(cachedIdDoc));
       return;
     }
 
     const cleanUrl = new URL(location.href);
-    cleanUrl.searchParams.delete("doc");
+    cleanUrl.searchParams.delete(documentProtocol ? "doc" : "proc");
     history.replaceState(null, "", cleanUrl.href);
 
     const hiddenRoot = document.createElement("div");
     hiddenRoot.innerHTML = '<span data-sipac-status></span>';
-    submitAuthenticatedSearch(parts, hiddenRoot, "document", { directOpen: true });
+    submitAuthenticatedSearch(parts, hiddenRoot, target, { directOpen: target === "document" });
   }
 
   if (isPortalPage && !document.getElementById(ROOT_ID) && !insertPublicWidget()) {
@@ -1075,7 +1079,7 @@
     runPendingAuthenticatedSearch();
   }
 
-  handleDocumentUrl();
+  handleDirectProtocolUrl();
   enhanceDocumentInfoPage();
   watchDocumentEnhancements();
   scheduleAutoOpen();

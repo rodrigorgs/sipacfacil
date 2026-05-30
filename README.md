@@ -52,6 +52,16 @@ https://sipac.ufba.br/sipac/portal_administrativo/index.jsf?doc=23066.029772/202
 
 A extensão detecta o parâmetro `doc`, busca o documento pelo protocolo, extrai o `idDoc` da ação da lupa e navega para a página de detalhes do documento.
 
+## URL direta para processo
+
+Após login no SIPAC, também é possível abrir uma URL neste formato:
+
+```text
+https://sipac.ufba.br/sipac/portal_administrativo/index.jsf?proc=23066.011718/2026-18
+```
+
+A extensão detecta o parâmetro `proc`, abre a consulta autenticada de processos e realiza a busca pelo protocolo.
+
 ## Observações
 
 - A extensão não armazena login ou senha. No Portal Administrativo, ela apenas reaproveita a sessão já aberta no Chrome.
