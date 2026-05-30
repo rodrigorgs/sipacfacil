@@ -4,6 +4,7 @@
   const ROOT_ID = "sipac-protocolo-rapido";
   const LAST_SEARCH_KEY = "sipacProtocoloRapido:lastSearch";
   const PENDING_AUTH_SEARCH_KEY = "sipacProtocoloRapido:pendingAuthSearch";
+  const DOCUMENT_ID_CACHE_KEY = "sipacProtocoloRapido:documentIdCache";
   const AUTO_OPEN_WINDOW_MS = 15000;
   const AUTH_SEARCH_URLS = {
     document: "/sipac/protocolo/consulta/consulta_documento.jsf",
@@ -96,6 +97,47 @@
     } catch (_error) {
       // Ignore storage failures.
     }
+  }
+
+  function getDocumentIdCache() {
+    try {
+      const raw = localStorage.getItem(DOCUMENT_ID_CACHE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  function getCachedDocumentId(protocol) {
+    const digits = onlyDigits(protocol);
+    if (!digits) {
+      return null;
+    }
+
+    const cached = getDocumentIdCache()[digits];
+    return cached && cached.idDoc ? String(cached.idDoc) : null;
+  }
+
+  function setCachedDocumentId(protocol, idDoc) {
+    const digits = onlyDigits(protocol);
+    if (!digits || !idDoc) {
+      return;
+    }
+
+    try {
+      const cache = getDocumentIdCache();
+      cache[digits] = {
+        idDoc: String(idDoc),
+        at: Date.now()
+      };
+      localStorage.setItem(DOCUMENT_ID_CACHE_KEY, JSON.stringify(cache));
+    } catch (_error) {
+      // Cache is only an optimization; direct search still works without it.
+    }
+  }
+
+  function getDocumentInfoUrlById(idDoc) {
+    return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(idDoc)}`;
   }
 
   function parseProtocol(value) {
@@ -608,7 +650,8 @@
       const link = findDocumentDetailLink(row);
       const idDoc = link && extractDocumentIdFromLink(link);
       if (idDoc) {
-        return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(idDoc)}`;
+        setCachedDocumentId(protocolDigits, idDoc);
+        return getDocumentInfoUrlById(idDoc);
       }
     }
 
@@ -980,6 +1023,12 @@
 
     const parts = parseProtocol(protocol);
     if (!parts) {
+      return;
+    }
+
+    const cachedIdDoc = getCachedDocumentId(protocol);
+    if (cachedIdDoc) {
+      location.replace(getDocumentInfoUrlById(cachedIdDoc));
       return;
     }
 
