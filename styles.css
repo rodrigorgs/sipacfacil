@@ -77,7 +77,8 @@
   color: #1f5e99;
 }
 
-#sipac-pr-document-summary {
+#sipac-pr-document-summary,
+#sipac-pr-process-result {
   background: #f7fbff;
   border: 1px solid #b6d3ee;
   border-radius: 6px;
@@ -87,7 +88,8 @@
   padding: 14px;
 }
 
-#sipac-pr-document-summary .sipac-pr-protocol {
+#sipac-pr-document-summary .sipac-pr-protocol,
+#sipac-pr-process-result .sipac-pr-protocol {
   align-items: center;
   color: #4b6073;
   display: inline-flex;
@@ -98,16 +100,19 @@
   margin-bottom: 4px;
 }
 
-#sipac-pr-document-summary .sipac-pr-protocol-label {
+#sipac-pr-document-summary .sipac-pr-protocol-label,
+#sipac-pr-process-result .sipac-pr-protocol-label {
   color: #657789;
   font-weight: bold;
 }
 
-#sipac-pr-document-summary .sipac-pr-protocol-number {
+#sipac-pr-document-summary .sipac-pr-protocol-number,
+#sipac-pr-process-result .sipac-pr-protocol-number {
   color: #4b6073;
 }
 
-#sipac-pr-document-summary .sipac-pr-copy-button {
+#sipac-pr-document-summary .sipac-pr-copy-button,
+#sipac-pr-process-result .sipac-pr-copy-button {
   background: transparent;
   border: 0;
   color: #657789;
@@ -117,19 +122,23 @@
   padding: 1px 3px;
 }
 
-#sipac-pr-document-summary .sipac-pr-copy-button:hover {
+#sipac-pr-document-summary .sipac-pr-copy-button:hover,
+#sipac-pr-process-result .sipac-pr-copy-button:hover {
   color: #1f5e99;
 }
 
-#sipac-pr-document-summary .sipac-pr-copy-button.sipac-pr-copied {
+#sipac-pr-document-summary .sipac-pr-copy-button.sipac-pr-copied,
+#sipac-pr-process-result .sipac-pr-copy-button.sipac-pr-copied {
   color: #2f7d32;
 }
 
-#sipac-pr-document-summary .sipac-pr-copy-button.sipac-pr-copy-error {
+#sipac-pr-document-summary .sipac-pr-copy-button.sipac-pr-copy-error,
+#sipac-pr-process-result .sipac-pr-copy-button.sipac-pr-copy-error {
   color: #b00020;
 }
 
-#sipac-pr-document-summary .sipac-pr-doc-detail {
+#sipac-pr-document-summary .sipac-pr-doc-detail,
+#sipac-pr-process-result .sipac-pr-process-detail {
   color: #102f4d;
   font-size: 20px;
   font-weight: bold;
@@ -137,21 +146,24 @@
   margin-bottom: 6px;
 }
 
-#sipac-pr-document-summary .sipac-pr-doc-subject {
+#sipac-pr-document-summary .sipac-pr-doc-subject,
+#sipac-pr-process-result .sipac-pr-process-subject {
   color: #4b6073;
   font-size: 13px;
   line-height: 1.35;
   margin-bottom: 12px;
 }
 
-#sipac-pr-document-summary .sipac-pr-action-row {
+#sipac-pr-document-summary .sipac-pr-action-row,
+#sipac-pr-process-result .sipac-pr-action-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-#sipac-pr-document-summary .sipac-pr-download-button {
+#sipac-pr-document-summary .sipac-pr-download-button,
+#sipac-pr-process-result .sipac-pr-download-button {
   background: #1f5e99;
   border: 1px solid #164a7a;
   border-radius: 4px;
@@ -163,20 +175,65 @@
   text-decoration: none;
 }
 
-#sipac-pr-document-summary .sipac-pr-download-button:hover {
+#sipac-pr-document-summary .sipac-pr-download-button:hover,
+#sipac-pr-process-result .sipac-pr-download-button:hover {
   background: #174f82;
   color: #fff;
 }
 
-#sipac-pr-document-summary .sipac-pr-secondary-button {
+#sipac-pr-document-summary .sipac-pr-secondary-button,
+#sipac-pr-process-result .sipac-pr-secondary-button {
   background: #fff;
   border-color: #9bbbd7;
   color: #1f5e99;
 }
 
-#sipac-pr-document-summary .sipac-pr-secondary-button:hover {
+#sipac-pr-document-summary .sipac-pr-secondary-button:hover,
+#sipac-pr-process-result .sipac-pr-secondary-button:hover {
   background: #e8f2fb;
   color: #174f82;
+}
+
+#sipac-pr-process-result .sipac-pr-process-fields {
+  display: grid;
+  gap: 5px 10px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 8px 0 0;
+}
+
+#sipac-pr-process-result .sipac-pr-process-fields dt {
+  color: #657789;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+#sipac-pr-process-result .sipac-pr-process-fields dd {
+  color: #17395c;
+  font-size: 13px;
+  margin: 0;
+}
+
+#sipac-pr-process-result .sipac-pr-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+#sipac-pr-process-result .sipac-pr-muted-action {
+  background: #fff;
+  border: 1px solid #d9e5ef;
+  border-radius: 4px;
+  color: #4b6073;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+#sipac-pr-process-result .sipac-pr-muted-action:hover {
+  background: #eef5fb;
+  color: #1f5e99;
 }
 
 #sipac-pr-document-summary .sipac-pr-summary-grid {

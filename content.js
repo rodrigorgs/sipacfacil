@@ -568,7 +568,179 @@
     return linksWithProtocol.length === 1 ? linksWithProtocol[0] : null;
   }
 
-  function removeSearchChrome(target, preserveElement) {
+  function getResultCellMap(table, row) {
+    const headers = Array.from(table.querySelectorAll("thead th, tr:first-child th")).map((header) =>
+      visibleText(header)
+    );
+    const cells = Array.from(row.cells || []);
+
+    return cells.map((cell, index) => ({
+      label: headers[index] || `Campo ${index + 1}`,
+      value: visibleText(cell),
+      cell
+    }));
+  }
+
+  function findProcessResultRow(table, protocolDigits) {
+    return Array.from(table.querySelectorAll("tbody tr, tr")).find((row) => {
+      if (row.querySelector("th")) {
+        return false;
+      }
+
+      return onlyDigits(visibleText(row)).includes(protocolDigits);
+    });
+  }
+
+  function pickProcessField(fields, pattern) {
+    return fields.find((field) => pattern.test(field.label)) ||
+      fields.find((field) => pattern.test(field.value));
+  }
+
+  function findProcessPdfLink(row) {
+    return Array.from(row.querySelectorAll("a")).find((link) =>
+      /gerar\s*pdf|pdf/i.test(getLinkHaystack(link))
+    );
+  }
+
+  function getActionLabel(link, fallback) {
+    const text = visibleText(link);
+    const image = link.querySelector("img");
+    return (
+      text ||
+      (image && (image.getAttribute("title") || image.getAttribute("alt"))) ||
+      link.getAttribute("title") ||
+      fallback
+    );
+  }
+
+  function createActionButton(label, className, link) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = className;
+    button.textContent = label;
+    button.addEventListener("click", () => link.click());
+    return button;
+  }
+
+  function createProcessResultSummary(table, protocolDigits) {
+    if (document.getElementById("sipac-pr-process-result")) {
+      return document.getElementById("sipac-pr-process-result");
+    }
+
+    const row = findProcessResultRow(table, protocolDigits);
+    if (!row) {
+      return null;
+    }
+
+    const fields = getResultCellMap(table, row).filter((field) => field.value);
+    const detailField = pickProcessField(fields, /assunto\s+detalhado/i);
+    const protocolField = pickProcessField(fields, /protocolo|processo/i);
+    const subjectField = fields.find((field) => /assunto/i.test(field.label) && field !== detailField) ||
+      fields.find((field) => /classifica/i.test(field.label));
+    const detailLink = findProcessLink(protocolDigits, "process");
+    const pdfLink = findProcessPdfLink(row);
+    const actionLinks = new Set([detailLink, pdfLink].filter(Boolean));
+    const otherLinks = Array.from(row.querySelectorAll("a")).filter((link) => !actionLinks.has(link));
+    const selectedFields = new Set([detailField, protocolField, subjectField].filter(Boolean));
+    const otherFields = fields.filter((field) => {
+      if (selectedFields.has(field)) {
+        return false;
+      }
+
+      return !field.cell.querySelector("a") && field.value;
+    });
+
+    const summary = document.createElement("section");
+    summary.id = "sipac-pr-process-result";
+
+    const title = document.createElement("div");
+    title.className = "sipac-pr-process-detail";
+    title.textContent = detailField && detailField.value ? detailField.value : "Processo encontrado";
+    summary.appendChild(title);
+
+    if (protocolField && protocolField.value) {
+      const protocol = document.createElement("div");
+      protocol.className = "sipac-pr-protocol";
+      protocol.innerHTML = `<span class="sipac-pr-protocol-label">Processo:</span> <span class="sipac-pr-protocol-number">${escapeHtml(protocolField.value)}</span>`;
+
+      const copyButton = document.createElement("button");
+      copyButton.type = "button";
+      copyButton.className = "sipac-pr-copy-button fa fa-copy";
+      copyButton.setAttribute("title", "Copiar número do processo");
+      copyButton.setAttribute("aria-label", "Copiar número do processo");
+      copyButton.addEventListener("click", () => {
+        copyTextToClipboard(protocolField.value)
+          .then(() => {
+            copyButton.classList.add("sipac-pr-copied");
+            copyButton.setAttribute("title", "Copiado");
+            window.setTimeout(() => {
+              copyButton.classList.remove("sipac-pr-copied");
+              copyButton.setAttribute("title", "Copiar número do processo");
+            }, 1400);
+          })
+          .catch(() => {
+            copyButton.classList.add("sipac-pr-copy-error");
+            copyButton.setAttribute("title", "Erro ao copiar");
+            window.setTimeout(() => {
+              copyButton.classList.remove("sipac-pr-copy-error");
+              copyButton.setAttribute("title", "Copiar número do processo");
+            }, 1400);
+          });
+      });
+      protocol.appendChild(copyButton);
+      summary.appendChild(protocol);
+    }
+
+    if (subjectField && subjectField.value) {
+      const subject = document.createElement("div");
+      subject.className = "sipac-pr-process-subject";
+      subject.textContent = subjectField.value;
+      summary.appendChild(subject);
+    }
+
+    const actionRow = document.createElement("div");
+    actionRow.className = "sipac-pr-action-row";
+
+    if (detailLink) {
+      actionRow.appendChild(createActionButton("Exibir Processo", "sipac-pr-download-button", detailLink));
+    }
+
+    if (pdfLink) {
+      actionRow.appendChild(createActionButton("Baixar PDF", "sipac-pr-download-button sipac-pr-secondary-button", pdfLink));
+    }
+
+    if (actionRow.children.length) {
+      summary.appendChild(actionRow);
+    }
+
+    if (otherFields.length) {
+      const details = document.createElement("dl");
+      details.className = "sipac-pr-process-fields";
+      otherFields.forEach((field) => {
+        const term = document.createElement("dt");
+        term.textContent = field.label;
+        const description = document.createElement("dd");
+        description.textContent = field.value;
+        details.append(term, description);
+      });
+      summary.appendChild(details);
+    }
+
+    if (otherLinks.length) {
+      const secondaryActions = document.createElement("div");
+      secondaryActions.className = "sipac-pr-secondary-actions";
+      otherLinks.forEach((link, index) => {
+        secondaryActions.appendChild(
+          createActionButton(getActionLabel(link, `Ação ${index + 1}`), "sipac-pr-muted-action", link)
+        );
+      });
+      summary.appendChild(secondaryActions);
+    }
+
+    return summary;
+  }
+
+  function removeSearchChrome(target, preserveElement, protocolDigits) {
     document.querySelectorAll("div.descricaoOperacao").forEach((element) => element.remove());
 
     const form = target === "document" ? getDocumentForm() : getProcessForm();
@@ -582,12 +754,23 @@
         return;
       }
 
+      const summary = createProcessResultSummary(resultsTable, protocolDigits);
+      if (summary && !summary.isConnected) {
+        resultsTable.insertAdjacentElement("beforebegin", summary);
+      }
+
       Array.from(form.children).forEach((child) => {
-        if (child !== resultsTable && !child.contains(resultsTable)) {
-          child.remove();
+        const shouldShow =
+          child === resultsTable ||
+          child === summary ||
+          child.contains(resultsTable);
+
+        if (!shouldShow) {
+          child.hidden = true;
         }
       });
 
+      resultsTable.hidden = true;
       return;
     }
 
@@ -655,7 +838,7 @@
 
     if (!link) {
       if (/nenhum|não encontrado|nao encontrado/i.test(pageText)) {
-        removeSearchChrome(lastSearch.target);
+        removeSearchChrome(lastSearch.target, null, lastSearch.digits);
         clearLastSearch();
         return true;
       }
@@ -663,7 +846,7 @@
       return false;
     }
 
-    removeSearchChrome(lastSearch.target, link);
+    removeSearchChrome(lastSearch.target, link, lastSearch.digits);
     clearLastSearch();
     return true;
   }
