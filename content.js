@@ -761,8 +761,8 @@
       fields.find((field) => pattern.test(field.value));
   }
 
-  function getProcessLabeledValue(row, labelPattern) {
-    const label = Array.from(row.querySelectorAll("b, strong")).find((element) =>
+  function getProcessLabeledValue(scope, labelPattern) {
+    const label = Array.from(scope.querySelectorAll("b, strong")).find((element) =>
       labelPattern.test(visibleText(element).replace(/:$/, "").trim())
     );
 
@@ -787,14 +787,30 @@
     return parts.join(" ").replace(/\s+/g, " ").trim();
   }
 
-  function getProcessDetailedSubject(row, fields) {
-    const labeledDetailedSubject = getProcessLabeledValue(row, /^assunto\s+detalhado$/i);
+  function getProcessDetailedSubject(row, fields, table) {
+    const labeledDetailedSubject =
+      getProcessLabeledValue(row, /^assunto\s+detalhado$/i) ||
+      (table ? getProcessLabeledValue(table, /^assunto\s+detalhado$/i) : "");
     if (labeledDetailedSubject) {
       return labeledDetailedSubject;
     }
 
     const detailField = pickProcessField(fields, /assunto\s+detalhado/i);
     return detailField ? detailField.value : "";
+  }
+
+  function getProcessSubject(row, fields, table) {
+    const labeledSubject =
+      getProcessLabeledValue(row, /^assunto\s+do\s+processo$/i) ||
+      (table ? getProcessLabeledValue(table, /^assunto\s+do\s+processo$/i) : "");
+    if (labeledSubject) {
+      return labeledSubject;
+    }
+
+    const subjectField =
+      fields.find((field) => /assunto/i.test(field.label)) ||
+      fields.find((field) => /classifica/i.test(field.label));
+    return subjectField ? subjectField.value : "";
   }
 
   function findProcessPdfLink(row) {
@@ -834,14 +850,19 @@
     }
 
     const fields = getResultCellMap(table, row).filter((field) => field.value);
-    const labeledDetailedSubject = getProcessDetailedSubject(row, fields);
+    const labeledDetailedSubject = getProcessDetailedSubject(row, fields, table);
+    const labeledSubject = getProcessSubject(row, fields, table);
     const detailField =
       (labeledDetailedSubject
         ? { label: "Assunto Detalhado", value: labeledDetailedSubject, cell: row }
         : null) ||
       pickProcessField(fields, /assunto\s+detalhado/i);
-    const protocolField = pickProcessField(fields, /protocolo|processo/i);
-    const subjectField = fields.find((field) => /assunto/i.test(field.label) && field !== detailField) ||
+    const protocolField =
+      (searchedProtocol ? { label: "Processo", value: searchedProtocol, cell: row } : null) ||
+      pickProcessField(fields, /protocolo|processo/i);
+    const subjectField =
+      (labeledSubject ? { label: "Assunto do Processo", value: labeledSubject, cell: row } : null) ||
+      fields.find((field) => /assunto/i.test(field.label) && field !== detailField) ||
       fields.find((field) => /classifica/i.test(field.label));
     const detailLink = findProcessLink(protocolDigits, "process");
     const pdfLink = findProcessPdfLink(row);
@@ -967,7 +988,9 @@
       const resultRow = findProcessResultRow(resultsTable, protocolDigits);
       if (resultRow && searchedProtocol) {
         const fields = getResultCellMap(resultsTable, resultRow).filter((field) => field.value);
-        const detailedSubject = getProcessDetailedSubject(resultRow, fields) || "Assunto detalhado não informado";
+        const detailedSubject =
+          getProcessDetailedSubject(resultRow, fields, resultsTable) ||
+          "Assunto detalhado não informado";
         recordConsultation("process", searchedProtocol, detailedSubject);
       }
 
