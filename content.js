@@ -1012,12 +1012,28 @@
     const idProcesso = new URLSearchParams(location.search).get("id");
     const detailedSubject = getProcessLabeledValue(document.body, /^assunto\s+detalhado$/i);
 
-    if (!protocol || !idProcesso || !detailedSubject) {
+    if (!protocol) {
       return;
     }
 
-    setCachedPublicProcessId(protocol, idProcesso, { detailedSubject });
-    recordConsultation("process", protocol, detailedSubject, { idProcesso });
+    if (!document.getElementById("sipac-pr-authenticated-process-link")) {
+      const link = document.createElement("a");
+      const url = new URL(ADMIN_PORTAL_URL, location.origin);
+      url.searchParams.set("proc", protocol);
+      link.id = "sipac-pr-authenticated-process-link";
+      link.href = url.href;
+      link.textContent = "Exibir processo no Portal Administrativo";
+
+      const content =
+        document.querySelector("#conteudo, #corpo, #container-inner") ||
+        document.body;
+      content.insertAdjacentElement("afterbegin", link);
+    }
+
+    if (idProcesso && detailedSubject) {
+      setCachedPublicProcessId(protocol, idProcesso, { detailedSubject });
+      recordConsultation("process", protocol, detailedSubject, { idProcesso });
+    }
   }
 
   function findProcessPdfLink(row) {

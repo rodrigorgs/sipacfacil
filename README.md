@@ -21,6 +21,8 @@ Ao colar um protocolo de processo no portal público, a extensão:
 
 Nas consultas públicas seguintes ao mesmo processo, a extensão usa o identificador salvo e abre diretamente a página detalhada, sem repetir a busca.
 
+Na página pública detalhada do processo, a extensão também exibe um botão para abrir o mesmo protocolo no Portal Administrativo autenticado.
+
 Ao colar um protocolo de documento no portal público, a extensão verifica primeiro se o `idDoc` já está salvo no cache. Quando está, abre diretamente a página do documento. Caso contrário, preenche e envia o formulário oficial `documentosForm`, salva o identificador encontrado e abre a página correspondente.
 
 Ao colar um protocolo no Portal Administrativo, a extensão:

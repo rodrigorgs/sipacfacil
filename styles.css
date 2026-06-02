@@ -166,6 +166,25 @@
   color: #fff !important;
 }
 
+#sipac-pr-authenticated-process-link {
+  background: #1f5e99;
+  border: 1px solid #164a7a;
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #fff !important;
+  display: inline-block;
+  font-size: 13px;
+  font-weight: bold;
+  margin: 10px 0 14px;
+  padding: 9px 13px;
+  text-decoration: none !important;
+}
+
+#sipac-pr-authenticated-process-link:hover {
+  background: #174f82;
+  color: #fff !important;
+}
+
 #sipac-pr-document-summary,
 #sipac-pr-process-result {
   background: #f7fbff;
