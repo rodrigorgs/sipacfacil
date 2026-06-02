@@ -218,12 +218,14 @@
   color: #b00020;
 }
 
-#sipac-pr-document-summary .sipac-pr-share-wrapper {
+#sipac-pr-document-summary .sipac-pr-share-wrapper,
+#sipac-pr-process-result .sipac-pr-share-wrapper {
   display: inline-flex;
   position: relative;
 }
 
-#sipac-pr-document-summary .sipac-pr-share-popover {
+#sipac-pr-document-summary .sipac-pr-share-popover,
+#sipac-pr-process-result .sipac-pr-share-popover {
   background: #fff;
   border: 1px solid #b6d3ee;
   border-radius: 4px;
@@ -239,11 +241,13 @@
   z-index: 10;
 }
 
-#sipac-pr-document-summary .sipac-pr-share-popover[hidden] {
+#sipac-pr-document-summary .sipac-pr-share-popover[hidden],
+#sipac-pr-process-result .sipac-pr-share-popover[hidden] {
   display: none;
 }
 
-#sipac-pr-document-summary .sipac-pr-share-popover button {
+#sipac-pr-document-summary .sipac-pr-share-popover button,
+#sipac-pr-process-result .sipac-pr-share-popover button {
   background: transparent;
   border: 0;
   border-radius: 3px;
@@ -254,11 +258,13 @@
   text-align: left;
 }
 
-#sipac-pr-document-summary .sipac-pr-share-popover button:hover {
+#sipac-pr-document-summary .sipac-pr-share-popover button:hover,
+#sipac-pr-process-result .sipac-pr-share-popover button:hover {
   background: #e8f2fb;
 }
 
-#sipac-pr-document-summary .sipac-pr-share-popover .fa {
+#sipac-pr-document-summary .sipac-pr-share-popover .fa,
+#sipac-pr-process-result .sipac-pr-share-popover .fa {
   color: #657789;
   margin-right: 5px;
 }

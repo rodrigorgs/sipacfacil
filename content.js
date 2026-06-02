@@ -839,6 +839,56 @@
     return button;
   }
 
+  function setupSharePopover(scope) {
+    const shareToggle = scope.querySelector("[data-sipac-share-toggle]");
+    const sharePopover = scope.querySelector("[data-sipac-share-popover]");
+    if (!shareToggle || !sharePopover) {
+      return;
+    }
+
+    const closeSharePopover = () => {
+      sharePopover.hidden = true;
+      shareToggle.setAttribute("aria-expanded", "false");
+    };
+
+    shareToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      sharePopover.hidden = !sharePopover.hidden;
+      shareToggle.setAttribute("aria-expanded", String(!sharePopover.hidden));
+    });
+
+    sharePopover.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    scope.querySelectorAll("[data-sipac-copy-value]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const originalText = button.textContent;
+        copyTextToClipboard(button.dataset.sipacCopyValue)
+          .then(() => {
+            button.textContent = "Copiado";
+            window.setTimeout(() => {
+              button.textContent = originalText;
+              closeSharePopover();
+            }, 1400);
+          })
+          .catch(() => {
+            button.textContent = "Erro ao copiar";
+            window.setTimeout(() => {
+              button.textContent = originalText;
+            }, 1400);
+          });
+      });
+    });
+
+    document.addEventListener("click", closeSharePopover);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeSharePopover();
+      }
+    });
+  }
+
   function createProcessResultSummary(table, protocolDigits, searchedProtocol) {
     if (document.getElementById("sipac-pr-process-result")) {
       return document.getElementById("sipac-pr-process-result");
@@ -892,34 +942,11 @@
     if (protocolField && protocolField.value) {
       const protocol = document.createElement("div");
       protocol.className = "sipac-pr-protocol";
-      protocol.innerHTML = `<span class="sipac-pr-protocol-label">Processo:</span> <span class="sipac-pr-protocol-number">${escapeHtml(protocolField.value)}</span>`;
-
-      const copyButton = document.createElement("button");
-      copyButton.type = "button";
-      copyButton.className = "sipac-pr-copy-button fa fa-copy";
-      copyButton.setAttribute("title", "Copiar número do processo");
-      copyButton.setAttribute("aria-label", "Copiar número do processo");
-      copyButton.addEventListener("click", () => {
-        copyTextToClipboard(protocolField.value)
-          .then(() => {
-            copyButton.classList.add("sipac-pr-copied");
-            copyButton.setAttribute("title", "Copiado");
-            window.setTimeout(() => {
-              copyButton.classList.remove("sipac-pr-copied");
-              copyButton.setAttribute("title", "Copiar número do processo");
-            }, 1400);
-          })
-          .catch(() => {
-            copyButton.classList.add("sipac-pr-copy-error");
-            copyButton.setAttribute("title", "Erro ao copiar");
-            window.setTimeout(() => {
-              copyButton.classList.remove("sipac-pr-copy-error");
-              copyButton.setAttribute("title", "Copiar número do processo");
-            }, 1400);
-          });
-      });
-      protocol.appendChild(copyButton);
+      const processSearchUrl = new URL(ADMIN_PORTAL_URL, location.origin);
+      processSearchUrl.searchParams.set("proc", protocolField.value);
+      protocol.innerHTML = `<span class="sipac-pr-protocol-label">Processo:</span> <span class="sipac-pr-protocol-number">${escapeHtml(protocolField.value)}</span><span class="sipac-pr-share-wrapper"><button class="sipac-pr-copy-button fa fa-share-alt" type="button" data-sipac-share-toggle title="Compartilhar" aria-label="Compartilhar" aria-expanded="false"></button><span class="sipac-pr-share-popover" data-sipac-share-popover hidden><button type="button" data-sipac-copy-value="${escapeAttribute(protocolField.value)}"><span class="fa fa-copy" aria-hidden="true"></span> Copiar número do processo</button><button type="button" data-sipac-copy-value="${escapeAttribute(processSearchUrl.href)}"><span class="fa fa-link" aria-hidden="true"></span> Copiar link para busca do processo</button></span></span>`;
       summary.appendChild(protocol);
+      setupSharePopover(protocol);
     }
 
     if (subjectField && subjectField.value) {
@@ -1419,51 +1446,7 @@
       content.insertAdjacentElement("afterbegin", summary);
     }
 
-    const shareToggle = summary.querySelector("[data-sipac-share-toggle]");
-    const sharePopover = summary.querySelector("[data-sipac-share-popover]");
-    if (shareToggle && sharePopover) {
-      const closeSharePopover = () => {
-        sharePopover.hidden = true;
-        shareToggle.setAttribute("aria-expanded", "false");
-      };
-
-      shareToggle.addEventListener("click", (event) => {
-        event.stopPropagation();
-        sharePopover.hidden = !sharePopover.hidden;
-        shareToggle.setAttribute("aria-expanded", String(!sharePopover.hidden));
-      });
-
-      sharePopover.addEventListener("click", (event) => {
-        event.stopPropagation();
-      });
-
-      summary.querySelectorAll("[data-sipac-copy-value]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const originalText = button.textContent;
-          copyTextToClipboard(button.dataset.sipacCopyValue)
-          .then(() => {
-            button.textContent = "Copiado";
-            window.setTimeout(() => {
-              button.textContent = originalText;
-              closeSharePopover();
-            }, 1400);
-          })
-          .catch(() => {
-            button.textContent = "Erro ao copiar";
-            window.setTimeout(() => {
-              button.textContent = originalText;
-            }, 1400);
-          });
-        });
-      });
-
-      document.addEventListener("click", closeSharePopover);
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-          closeSharePopover();
-        }
-      });
-    }
+    setupSharePopover(summary);
   }
 
   function escapeHtml(value) {
