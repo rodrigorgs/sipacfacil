@@ -388,6 +388,14 @@
       return;
     }
 
+    if (mode === "authenticated" && target === "document") {
+      const cachedIdDoc = getCachedDocumentId(formatProtocol(parts));
+      if (cachedIdDoc) {
+        location.assign(getDocumentInfoUrlById(cachedIdDoc));
+        return;
+      }
+    }
+
     if (mode === "authenticated") {
       submitAuthenticatedSearch(parts, root, target, { directOpen: target === "document" });
       return;
