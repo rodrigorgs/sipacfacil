@@ -761,6 +761,42 @@
       fields.find((field) => pattern.test(field.value));
   }
 
+  function getProcessLabeledValue(row, labelPattern) {
+    const label = Array.from(row.querySelectorAll("b, strong")).find((element) =>
+      labelPattern.test(visibleText(element).replace(/:$/, "").trim())
+    );
+
+    if (!label) {
+      return "";
+    }
+
+    const parts = [];
+    let node = label.nextSibling;
+
+    while (node) {
+      if (node.nodeType === Node.ELEMENT_NODE && /^(B|STRONG)$/i.test(node.tagName)) {
+        break;
+      }
+
+      if (!(node.nodeType === Node.ELEMENT_NODE && /^BR$/i.test(node.tagName))) {
+        parts.push(node.nodeType === Node.TEXT_NODE ? node.textContent || "" : visibleText(node));
+      }
+      node = node.nextSibling;
+    }
+
+    return parts.join(" ").replace(/\s+/g, " ").trim();
+  }
+
+  function getProcessDetailedSubject(row, fields) {
+    const labeledDetailedSubject = getProcessLabeledValue(row, /^assunto\s+detalhado$/i);
+    if (labeledDetailedSubject) {
+      return labeledDetailedSubject;
+    }
+
+    const detailField = pickProcessField(fields, /assunto\s+detalhado/i);
+    return detailField ? detailField.value : "";
+  }
+
   function findProcessPdfLink(row) {
     return Array.from(row.querySelectorAll("a")).find((link) =>
       /gerar\s*pdf|pdf/i.test(getLinkHaystack(link))
@@ -787,7 +823,7 @@
     return button;
   }
 
-  function createProcessResultSummary(table, protocolDigits) {
+  function createProcessResultSummary(table, protocolDigits, searchedProtocol) {
     if (document.getElementById("sipac-pr-process-result")) {
       return document.getElementById("sipac-pr-process-result");
     }
@@ -798,7 +834,12 @@
     }
 
     const fields = getResultCellMap(table, row).filter((field) => field.value);
-    const detailField = pickProcessField(fields, /assunto\s+detalhado/i);
+    const labeledDetailedSubject = getProcessDetailedSubject(row, fields);
+    const detailField =
+      (labeledDetailedSubject
+        ? { label: "Assunto Detalhado", value: labeledDetailedSubject, cell: row }
+        : null) ||
+      pickProcessField(fields, /assunto\s+detalhado/i);
     const protocolField = pickProcessField(fields, /protocolo|processo/i);
     const subjectField = fields.find((field) => /assunto/i.test(field.label) && field !== detailField) ||
       fields.find((field) => /classifica/i.test(field.label));
@@ -818,8 +859,8 @@
     const summary = document.createElement("section");
     summary.id = "sipac-pr-process-result";
 
-    if (protocolField && protocolField.value && detailField && detailField.value) {
-      recordConsultation("process", protocolField.value, detailField.value);
+    if (searchedProtocol && detailField && detailField.value) {
+      recordConsultation("process", searchedProtocol, detailField.value);
     }
 
     const title = document.createElement("div");
@@ -909,7 +950,7 @@
     return summary;
   }
 
-  function removeSearchChrome(target, preserveElement, protocolDigits) {
+  function removeSearchChrome(target, preserveElement, protocolDigits, searchedProtocol) {
     document.querySelectorAll("div.descricaoOperacao").forEach((element) => element.remove());
 
     const form = target === "document" ? getDocumentForm() : getProcessForm();
@@ -923,7 +964,14 @@
         return;
       }
 
-      const summary = createProcessResultSummary(resultsTable, protocolDigits);
+      const resultRow = findProcessResultRow(resultsTable, protocolDigits);
+      if (resultRow && searchedProtocol) {
+        const fields = getResultCellMap(resultsTable, resultRow).filter((field) => field.value);
+        const detailedSubject = getProcessDetailedSubject(resultRow, fields) || "Assunto detalhado não informado";
+        recordConsultation("process", searchedProtocol, detailedSubject);
+      }
+
+      const summary = createProcessResultSummary(resultsTable, protocolDigits, searchedProtocol);
       if (summary && !summary.isConnected) {
         resultsTable.insertAdjacentElement("beforebegin", summary);
       }
@@ -1007,7 +1055,7 @@
 
     if (!link) {
       if (/nenhum|não encontrado|nao encontrado/i.test(pageText)) {
-        removeSearchChrome(lastSearch.target, null, lastSearch.digits);
+        removeSearchChrome(lastSearch.target, null, lastSearch.digits, lastSearch.protocol);
         clearLastSearch();
         return true;
       }
@@ -1015,7 +1063,7 @@
       return false;
     }
 
-    removeSearchChrome(lastSearch.target, link, lastSearch.digits);
+    removeSearchChrome(lastSearch.target, link, lastSearch.digits, lastSearch.protocol);
     clearLastSearch();
     return true;
   }
