@@ -14,9 +14,12 @@ O painel tem duas buscas independentes:
 Ao colar um protocolo de processo no portal público, a extensão:
 
 1. interpreta o número no formato `23066.000000/2026-00`;
-2. preenche a busca oficial de processos do próprio SIPAC;
-3. envia o formulário oficial;
-4. tenta abrir automaticamente o link do processo quando a tela de resultado apresenta um único item correspondente.
+2. verifica se o identificador público do processo já está no cache local;
+3. quando necessário, preenche e envia a busca oficial de processos do próprio SIPAC;
+4. extrai o identificador do resultado e salva esse valor no cache;
+5. abre `https://sipac.ufba.br/public/jsp/processos/processo_detalhado.jsf?id=...`.
+
+Nas consultas públicas seguintes ao mesmo processo, a extensão usa o identificador salvo e abre diretamente a página detalhada, sem repetir a busca.
 
 Ao colar um protocolo de documento no portal público, a extensão preenche e envia o formulário oficial `documentosForm`.
 
@@ -72,3 +75,9 @@ A extensão detecta o parâmetro `proc`, abre a consulta autenticada de processo
 - No portal público, a extensão usa o formulário público já presente no portal; ela não usa APIs privadas.
 - Se o SIPAC retornar mais de um resultado, a extensão evita escolher sozinha e deixa a página de resultados aberta.
 - Caso o protocolo seja colado apenas com números, a extensão tenta inferir o formato padrão da UFBA iniciado por `23066`.
+
+Para limpar apenas o cache de processos públicos durante testes, abra o console em uma página do SIPAC e execute:
+
+```js
+localStorage.removeItem("sipacProtocoloRapido:publicProcessIdCache");
+```

@@ -5,6 +5,7 @@
   const LAST_SEARCH_KEY = "sipacProtocoloRapido:lastSearch";
   const PENDING_AUTH_SEARCH_KEY = "sipacProtocoloRapido:pendingAuthSearch";
   const DOCUMENT_ID_CACHE_KEY = "sipacProtocoloRapido:documentIdCache";
+  const PUBLIC_PROCESS_ID_CACHE_KEY = "sipacProtocoloRapido:publicProcessIdCache";
   const CONSULTATION_HISTORY_KEY = "sipacProtocoloRapido:consultationHistory";
   const HISTORY_LIMIT = 10;
   const AUTO_OPEN_WINDOW_MS = 15000;
@@ -141,6 +142,47 @@
 
   function getDocumentInfoUrlById(idDoc) {
     return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(idDoc)}`;
+  }
+
+  function getPublicProcessIdCache() {
+    try {
+      const raw = localStorage.getItem(PUBLIC_PROCESS_ID_CACHE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_error) {
+      return {};
+    }
+  }
+
+  function getCachedPublicProcessId(protocol) {
+    const digits = onlyDigits(protocol);
+    if (!digits) {
+      return null;
+    }
+
+    const cached = getPublicProcessIdCache()[digits];
+    return cached && cached.idProcesso ? String(cached.idProcesso) : null;
+  }
+
+  function setCachedPublicProcessId(protocol, idProcesso) {
+    const digits = onlyDigits(protocol);
+    if (!digits || !idProcesso) {
+      return;
+    }
+
+    try {
+      const cache = getPublicProcessIdCache();
+      cache[digits] = {
+        idProcesso: String(idProcesso),
+        at: Date.now()
+      };
+      localStorage.setItem(PUBLIC_PROCESS_ID_CACHE_KEY, JSON.stringify(cache));
+    } catch (_error) {
+      // Cache is only an optimization; direct search still works without it.
+    }
+  }
+
+  function getPublicProcessDetailUrlById(idProcesso) {
+    return `/public/jsp/processos/processo_detalhado.jsf?id=${encodeURIComponent(idProcesso)}`;
   }
 
   function getConsultationHistory() {
@@ -511,6 +553,14 @@
       return;
     }
 
+    if (target === "process") {
+      const cachedIdProcesso = getCachedPublicProcessId(formatProtocol(parts));
+      if (cachedIdProcesso) {
+        location.assign(getPublicProcessDetailUrlById(cachedIdProcesso));
+        return;
+      }
+    }
+
     if (target === "document") {
       submitPublicDocumentSearch(parts, root);
       return;
@@ -731,6 +781,37 @@
     );
 
     return linksWithProtocol.length === 1 ? linksWithProtocol[0] : null;
+  }
+
+  function extractPublicProcessIdFromLink(link) {
+    const haystack = `${link.getAttribute("href") || ""} ${link.getAttribute("onclick") || ""}`;
+    const match =
+      haystack.match(/processo_detalhado\.jsf\?[^"' ]*?\bid=([0-9]+)/i) ||
+      haystack.match(/(?:[?&]id|idProcesso)=([0-9]+)/i) ||
+      haystack.match(/['"]idProcesso['"]\s*:\s*['"]?([0-9]+)/i);
+
+    return match ? match[1] : null;
+  }
+
+  function findPublicProcessId(protocolDigits) {
+    const rows = Array.from(
+      document.querySelectorAll("#corpo tr, #corpo .listagem li, #corpo dl, #conteudo tr, #conteudo .listagem li, #conteudo dl")
+    );
+
+    for (const row of rows) {
+      if (!onlyDigits(visibleText(row)).includes(protocolDigits)) {
+        continue;
+      }
+
+      for (const link of row.querySelectorAll("a")) {
+        const idProcesso = extractPublicProcessIdFromLink(link);
+        if (idProcesso) {
+          return idProcesso;
+        }
+      }
+    }
+
+    return null;
   }
 
   function getResultCellMap(table, row) {
@@ -1101,6 +1182,25 @@
 
     const pageText = visibleText(document.body);
     const protocolWasRendered = onlyDigits(pageText).includes(lastSearch.digits);
+
+    if (isPortalPage) {
+      const idProcesso = protocolWasRendered ? findPublicProcessId(lastSearch.digits) : null;
+
+      if (idProcesso) {
+        setCachedPublicProcessId(lastSearch.protocol, idProcesso);
+        clearLastSearch();
+        location.assign(getPublicProcessDetailUrlById(idProcesso));
+        return true;
+      }
+
+      if (/nenhum|não encontrado|nao encontrado/i.test(pageText)) {
+        clearLastSearch();
+        return true;
+      }
+
+      return false;
+    }
+
     const link = protocolWasRendered ? findProcessLink(lastSearch.digits, lastSearch.target) : null;
 
     if (!link) {
