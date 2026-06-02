@@ -26,6 +26,8 @@
     isSipacPage && Object.values(AUTH_SEARCH_URLS).includes(location.pathname);
   const isDocumentInfoPage =
     isSipacPage && location.pathname === "/sipac/protocolo/consulta/info_documento.jsf";
+  const isPublicProcessDetailPage =
+    isSipacPage && location.pathname === "/public/jsp/processos/processo_detalhado.jsf";
 
   if (!isSipacPage) {
     return;
@@ -122,7 +124,7 @@
     return cached && cached.idDoc ? String(cached.idDoc) : null;
   }
 
-  function setCachedDocumentId(protocol, idDoc) {
+  function setCachedDocumentId(protocol, idDoc, options) {
     const digits = onlyDigits(protocol);
     if (!digits || !idDoc) {
       return;
@@ -130,8 +132,13 @@
 
     try {
       const cache = getDocumentIdCache();
+      const previous = cache[digits] || {};
       cache[digits] = {
         idDoc: String(idDoc),
+        detailedSubject:
+          options && options.detailedSubject
+            ? String(options.detailedSubject)
+            : previous.detailedSubject || "",
         at: Date.now()
       };
       localStorage.setItem(DOCUMENT_ID_CACHE_KEY, JSON.stringify(cache));
@@ -142,6 +149,11 @@
 
   function getDocumentInfoUrlById(idDoc) {
     return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(idDoc)}`;
+  }
+
+  function getCachedDocumentDetailedSubject(protocol) {
+    const cached = getDocumentIdCache()[onlyDigits(protocol)];
+    return cached && cached.detailedSubject ? String(cached.detailedSubject) : "";
   }
 
   function getPublicProcessIdCache() {
@@ -163,7 +175,7 @@
     return cached && cached.idProcesso ? String(cached.idProcesso) : null;
   }
 
-  function setCachedPublicProcessId(protocol, idProcesso) {
+  function setCachedPublicProcessId(protocol, idProcesso, options) {
     const digits = onlyDigits(protocol);
     if (!digits || !idProcesso) {
       return;
@@ -171,8 +183,13 @@
 
     try {
       const cache = getPublicProcessIdCache();
+      const previous = cache[digits] || {};
       cache[digits] = {
         idProcesso: String(idProcesso),
+        detailedSubject:
+          options && options.detailedSubject
+            ? String(options.detailedSubject)
+            : previous.detailedSubject || "",
         at: Date.now()
       };
       localStorage.setItem(PUBLIC_PROCESS_ID_CACHE_KEY, JSON.stringify(cache));
@@ -183,6 +200,11 @@
 
   function getPublicProcessDetailUrlById(idProcesso) {
     return `/public/jsp/processos/processo_detalhado.jsf?id=${encodeURIComponent(idProcesso)}`;
+  }
+
+  function getCachedPublicProcessDetailedSubject(protocol) {
+    const cached = getPublicProcessIdCache()[onlyDigits(protocol)];
+    return cached && cached.detailedSubject ? String(cached.detailedSubject) : "";
   }
 
   function getConsultationHistory() {
@@ -212,10 +234,16 @@
 
     try {
       const history = getConsultationHistory();
+      const previous =
+        history[target].find(
+          (item) => onlyDigits(item.protocol) === onlyDigits(normalizedProtocol)
+        ) || {};
       const entry = {
         protocol: normalizedProtocol,
         detailedSubject: String(detailedSubject).trim(),
-        idDoc: options && options.idDoc ? String(options.idDoc) : "",
+        idDoc: options && options.idDoc ? String(options.idDoc) : previous.idDoc || "",
+        idProcesso:
+          options && options.idProcesso ? String(options.idProcesso) : previous.idProcesso || "",
         at: Date.now()
       };
 
@@ -236,9 +264,30 @@
       return getDocumentInfoUrlById(item.idDoc);
     }
 
+    if (target === "process") {
+      const publicIdProcesso = item.idProcesso || getCachedPublicProcessId(item.protocol);
+      if (publicIdProcesso) {
+        return getPublicProcessDetailUrlById(publicIdProcesso);
+      }
+    }
+
     const url = new URL(ADMIN_PORTAL_URL, location.origin);
     url.searchParams.set(target === "document" ? "doc" : "proc", item.protocol);
     return url.href;
+  }
+
+  function getHistoryItemDetailedSubject(target, item) {
+    const cachedSubject =
+      target === "document"
+        ? getCachedDocumentDetailedSubject(item.protocol)
+        : getCachedPublicProcessDetailedSubject(item.protocol);
+    const savedSubject = String(item.detailedSubject || "").trim();
+
+    if (cachedSubject && (!savedSubject || /não informado|nao informado/i.test(savedSubject))) {
+      return cachedSubject;
+    }
+
+    return savedSubject || "Assunto detalhado não informado";
   }
 
   function createHistoryList(target, items) {
@@ -264,7 +313,7 @@
       link.href = getHistoryItemUrl(target, item);
       link.textContent = item.protocol;
       const subject = document.createElement("div");
-      subject.textContent = item.detailedSubject;
+      subject.textContent = getHistoryItemDetailedSubject(target, item);
       listItem.append(link, subject);
       list.appendChild(listItem);
     });
@@ -272,7 +321,7 @@
     return section;
   }
 
-  function renderConsultationHistory(widget) {
+  function renderConsultationHistory(widget, options) {
     const container =
       document.getElementById("sipac-pr-consultation-history") ||
       (widget && document.createElement("section"));
@@ -283,7 +332,11 @@
 
     if (!container.id) {
       container.id = "sipac-pr-consultation-history";
-      widget.insertAdjacentElement("afterend", container);
+      if (options && options.insideWidget) {
+        widget.appendChild(container);
+      } else {
+        widget.insertAdjacentElement("afterend", container);
+      }
     }
 
     const history = getConsultationHistory();
@@ -553,9 +606,25 @@
       return;
     }
 
+    if (target === "document") {
+      const protocol = formatProtocol(parts);
+      const cachedIdDoc = getCachedDocumentId(protocol);
+      if (cachedIdDoc) {
+        recordConsultation("document", protocol, getCachedDocumentDetailedSubject(protocol), {
+          idDoc: cachedIdDoc
+        });
+        location.assign(getDocumentInfoUrlById(cachedIdDoc));
+        return;
+      }
+    }
+
     if (target === "process") {
-      const cachedIdProcesso = getCachedPublicProcessId(formatProtocol(parts));
+      const protocol = formatProtocol(parts);
+      const cachedIdProcesso = getCachedPublicProcessId(protocol);
       if (cachedIdProcesso) {
+        recordConsultation("process", protocol, getCachedPublicProcessDetailedSubject(protocol), {
+          idProcesso: cachedIdProcesso
+        });
         location.assign(getPublicProcessDetailUrlById(cachedIdProcesso));
         return;
       }
@@ -653,6 +722,18 @@
     }
   }
 
+  function ensurePublicConsultationHistory(widget) {
+    if (!widget || !widget.isConnected || document.getElementById("sipac-pr-consultation-history")) {
+      return;
+    }
+
+    renderConsultationHistory(widget, { insideWidget: true });
+    const history = document.getElementById("sipac-pr-consultation-history");
+    if (history) {
+      history.classList.add("sipac-pr-public-history");
+    }
+  }
+
   function insertPublicWidget() {
     const editaisBox = document.querySelector("#p-comunicados div.editais");
     const editaisTitle = editaisBox && editaisBox.querySelector("h3");
@@ -663,7 +744,11 @@
 
     const widget = createWidget("public");
     editaisTitle.insertAdjacentElement("afterend", widget);
-    insertPortalAccessButtonForSession(widget);
+    ensurePublicConsultationHistory(widget);
+    insertPortalAccessButtonForSession(widget).then(() => ensurePublicConsultationHistory(widget));
+
+    const observer = new MutationObserver(() => ensurePublicConsultationHistory(widget));
+    observer.observe(editaisBox, { childList: true, subtree: true });
     return true;
   }
 
@@ -793,7 +878,7 @@
     return match ? match[1] : null;
   }
 
-  function findPublicProcessId(protocolDigits) {
+  function findPublicProcessResult(protocolDigits) {
     const rows = Array.from(
       document.querySelectorAll("#corpo tr, #corpo .listagem li, #corpo dl, #conteudo tr, #conteudo .listagem li, #conteudo dl")
     );
@@ -806,7 +891,7 @@
       for (const link of row.querySelectorAll("a")) {
         const idProcesso = extractPublicProcessIdFromLink(link);
         if (idProcesso) {
-          return idProcesso;
+          return { idProcesso, row };
         }
       }
     }
@@ -843,7 +928,7 @@
   }
 
   function getProcessLabeledValue(scope, labelPattern) {
-    const label = Array.from(scope.querySelectorAll("b, strong")).find((element) =>
+    const label = Array.from(scope.querySelectorAll("b, strong, th, dt, .rotulo")).find((element) =>
       labelPattern.test(visibleText(element).replace(/:$/, "").trim())
     );
 
@@ -865,7 +950,30 @@
       node = node.nextSibling;
     }
 
-    return parts.join(" ").replace(/\s+/g, " ").trim();
+    const siblingValue = parts.join(" ").replace(/\s+/g, " ").trim();
+    if (siblingValue) {
+      return siblingValue;
+    }
+
+    const labelCell = label.closest("th, td");
+    const row = label.closest("tr");
+    const cells = row ? Array.from(row.cells || []) : [];
+    const labelCellIndex = cells.indexOf(labelCell);
+    if (labelCellIndex >= 0) {
+      const cellValue = cells
+        .slice(labelCellIndex + 1)
+        .map((cell) => visibleText(cell))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (cellValue) {
+        return cellValue;
+      }
+    }
+
+    const parentText = label.parentElement ? visibleText(label.parentElement) : "";
+    const labelText = visibleText(label);
+    return parentText.startsWith(labelText) ? parentText.slice(labelText.length).trim() : "";
   }
 
   function getProcessDetailedSubject(row, fields, table) {
@@ -892,6 +1000,24 @@
       fields.find((field) => /assunto/i.test(field.label)) ||
       fields.find((field) => /classifica/i.test(field.label));
     return subjectField ? subjectField.value : "";
+  }
+
+  function recordPublicProcessDetailConsultation() {
+    if (!isPublicProcessDetailPage) {
+      return;
+    }
+
+    const pageText = visibleText(document.body);
+    const protocol = getProtocolFromText(pageText);
+    const idProcesso = new URLSearchParams(location.search).get("id");
+    const detailedSubject = getProcessLabeledValue(document.body, /^assunto\s+detalhado$/i);
+
+    if (!protocol || !idProcesso || !detailedSubject) {
+      return;
+    }
+
+    setCachedPublicProcessId(protocol, idProcesso, { detailedSubject });
+    recordConsultation("process", protocol, detailedSubject, { idProcesso });
   }
 
   function findProcessPdfLink(row) {
@@ -1160,7 +1286,9 @@
       if (lastSearch.directOpen) {
         const pageText = visibleText(document.body);
         const protocolWasRendered = onlyDigits(pageText).includes(lastSearch.digits);
-        const infoUrl = protocolWasRendered ? findDocumentInfoUrl(lastSearch.digits) : null;
+        const infoUrl = protocolWasRendered
+          ? findDocumentInfoUrl(lastSearch.digits, lastSearch.protocol)
+          : null;
 
         if (infoUrl) {
           clearLastSearch();
@@ -1184,12 +1312,20 @@
     const protocolWasRendered = onlyDigits(pageText).includes(lastSearch.digits);
 
     if (isPortalPage) {
-      const idProcesso = protocolWasRendered ? findPublicProcessId(lastSearch.digits) : null;
+      const result = protocolWasRendered ? findPublicProcessResult(lastSearch.digits) : null;
 
-      if (idProcesso) {
-        setCachedPublicProcessId(lastSearch.protocol, idProcesso);
+      if (result) {
+        const table = result.row.closest("table");
+        const fields = table ? getResultCellMap(table, result.row) : [];
+        const detailedSubject =
+          getProcessDetailedSubject(result.row, fields, table) ||
+          "Assunto detalhado não informado";
+        setCachedPublicProcessId(lastSearch.protocol, result.idProcesso, { detailedSubject });
+        recordConsultation("process", lastSearch.protocol, detailedSubject, {
+          idProcesso: result.idProcesso
+        });
         clearLastSearch();
-        location.assign(getPublicProcessDetailUrlById(idProcesso));
+        location.assign(getPublicProcessDetailUrlById(result.idProcesso));
         return true;
       }
 
@@ -1237,7 +1373,7 @@
     return functionMatch ? functionMatch[1] : null;
   }
 
-  function findDocumentInfoUrl(protocolDigits) {
+  function findDocumentInfoUrl(protocolDigits, searchedProtocol) {
     const rows = Array.from(
       document.querySelectorAll("#corpo tr, #corpo .listagem li, #corpo dl, #conteudo tr, #conteudo .listagem li, #conteudo dl")
     );
@@ -1250,7 +1386,16 @@
       const link = findDocumentDetailLink(row);
       const idDoc = link && extractDocumentIdFromLink(link);
       if (idDoc) {
-        setCachedDocumentId(protocolDigits, idDoc);
+        const table = row.closest("table");
+        const fields = table ? getResultCellMap(table, row) : [];
+        const detailedSubject =
+          getProcessLabeledValue(row, /^assunto\s+detalhado$/i) ||
+          (table ? getProcessLabeledValue(table, /^assunto\s+detalhado$/i) : "") ||
+          (pickProcessField(fields, /assunto\s+detalhado/i) || {}).value ||
+          "Assunto detalhado não informado";
+        const protocol = searchedProtocol || protocolDigits;
+        setCachedDocumentId(protocol, idDoc, { detailedSubject });
+        recordConsultation("document", protocol, detailedSubject, { idDoc });
         return getDocumentInfoUrlById(idDoc);
       }
     }
@@ -1494,6 +1639,7 @@
     }
 
     if (protocol && detailedSubject) {
+      setCachedDocumentId(protocol, getDocumentIdFromLocation(), { detailedSubject });
       recordConsultation("document", protocol, detailedSubject, {
         idDoc: getDocumentIdFromLocation()
       });
@@ -1665,6 +1811,7 @@
   }
 
   handleDirectProtocolUrl();
+  recordPublicProcessDetailConsultation();
   enhanceDocumentInfoPage();
   watchDocumentEnhancements();
   scheduleAutoOpen();

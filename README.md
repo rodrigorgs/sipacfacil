@@ -21,7 +21,7 @@ Ao colar um protocolo de processo no portal público, a extensão:
 
 Nas consultas públicas seguintes ao mesmo processo, a extensão usa o identificador salvo e abre diretamente a página detalhada, sem repetir a busca.
 
-Ao colar um protocolo de documento no portal público, a extensão preenche e envia o formulário oficial `documentosForm`.
+Ao colar um protocolo de documento no portal público, a extensão verifica primeiro se o `idDoc` já está salvo no cache. Quando está, abre diretamente a página do documento. Caso contrário, preenche e envia o formulário oficial `documentosForm`, salva o identificador encontrado e abre a página correspondente.
 
 Ao colar um protocolo no Portal Administrativo, a extensão:
 
@@ -30,7 +30,7 @@ Ao colar um protocolo no Portal Administrativo, a extensão:
 3. preenche os campos internos do formulário autenticado;
 4. submete a busca usando a sessão já autenticada do navegador.
 
-No Portal Administrativo, a extensão também exibe os últimos 10 documentos e processos consultados. O histórico fica armazenado localmente no navegador e apresenta links diretos para cada protocolo.
+No portal público e no Portal Administrativo, a extensão também exibe os últimos 10 documentos e processos consultados. O histórico fica armazenado localmente no navegador e apresenta links diretos para cada protocolo.
 
 ## Instalação local
 

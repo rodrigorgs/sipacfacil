@@ -87,6 +87,14 @@
   width: 90%;
 }
 
+#sipac-pr-consultation-history.sipac-pr-public-history {
+  border-top: 1px solid #b6d3ee;
+  margin: 12px 0 0;
+  max-width: none;
+  padding-top: 10px;
+  width: 100%;
+}
+
 #sipac-pr-consultation-history .sipac-pr-history-section {
   min-width: 0;
 }
