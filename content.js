@@ -1193,7 +1193,7 @@
     summary.innerHTML = [
       `<div class="sipac-pr-doc-detail">${escapeHtml(detailedSubject || "Documento sem assunto detalhado")}</div>`,
       protocol
-        ? `<div class="sipac-pr-protocol"><span class="sipac-pr-protocol-label">Protocolo:</span> <span class="sipac-pr-protocol-number">${escapeHtml(protocol)}</span><button class="sipac-pr-copy-button fa fa-copy" type="button" data-sipac-copy-protocol="${escapeAttribute(protocol)}" title="Copiar número do protocolo" aria-label="Copiar número do protocolo"></button></div>`
+        ? `<div class="sipac-pr-protocol"><span class="sipac-pr-protocol-label">Protocolo:</span> <span class="sipac-pr-protocol-number">${escapeHtml(protocol)}</span><span class="sipac-pr-share-wrapper"><button class="sipac-pr-copy-button fa fa-share-alt" type="button" data-sipac-share-toggle title="Compartilhar" aria-label="Compartilhar" aria-expanded="false"></button><span class="sipac-pr-share-popover" data-sipac-share-popover hidden><button type="button" data-sipac-copy-value="${escapeAttribute(protocol)}"><span class="fa fa-copy" aria-hidden="true"></span> Copiar número do processo</button><button type="button" data-sipac-copy-value="${escapeAttribute(location.href)}"><span class="fa fa-link" aria-hidden="true"></span> Copiar link para a página de detalhamento do processo</button></span></span></div>`
         : "",
       `<div class="sipac-pr-doc-subject">${escapeHtml(subject || "Assunto não informado")}</div>`,
       actionButtons.length
@@ -1219,26 +1219,49 @@
       content.insertAdjacentElement("afterbegin", summary);
     }
 
-    const copyButton = summary.querySelector("[data-sipac-copy-protocol]");
-    if (copyButton) {
-      copyButton.addEventListener("click", () => {
-        copyTextToClipboard(copyButton.dataset.sipacCopyProtocol)
+    const shareToggle = summary.querySelector("[data-sipac-share-toggle]");
+    const sharePopover = summary.querySelector("[data-sipac-share-popover]");
+    if (shareToggle && sharePopover) {
+      const closeSharePopover = () => {
+        sharePopover.hidden = true;
+        shareToggle.setAttribute("aria-expanded", "false");
+      };
+
+      shareToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        sharePopover.hidden = !sharePopover.hidden;
+        shareToggle.setAttribute("aria-expanded", String(!sharePopover.hidden));
+      });
+
+      sharePopover.addEventListener("click", (event) => {
+        event.stopPropagation();
+      });
+
+      summary.querySelectorAll("[data-sipac-copy-value]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const originalText = button.textContent;
+          copyTextToClipboard(button.dataset.sipacCopyValue)
           .then(() => {
-            copyButton.classList.add("sipac-pr-copied");
-            copyButton.setAttribute("title", "Copiado");
+            button.textContent = "Copiado";
             window.setTimeout(() => {
-              copyButton.classList.remove("sipac-pr-copied");
-              copyButton.setAttribute("title", "Copiar número do protocolo");
+              button.textContent = originalText;
+              closeSharePopover();
             }, 1400);
           })
           .catch(() => {
-            copyButton.classList.add("sipac-pr-copy-error");
-            copyButton.setAttribute("title", "Erro ao copiar");
+            button.textContent = "Erro ao copiar";
             window.setTimeout(() => {
-              copyButton.classList.remove("sipac-pr-copy-error");
-              copyButton.setAttribute("title", "Copiar número do protocolo");
+              button.textContent = originalText;
             }, 1400);
           });
+        });
+      });
+
+      document.addEventListener("click", closeSharePopover);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          closeSharePopover();
+        }
       });
     }
   }

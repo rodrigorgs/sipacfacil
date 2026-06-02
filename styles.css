@@ -158,6 +158,51 @@
   color: #b00020;
 }
 
+#sipac-pr-document-summary .sipac-pr-share-wrapper {
+  display: inline-flex;
+  position: relative;
+}
+
+#sipac-pr-document-summary .sipac-pr-share-popover {
+  background: #fff;
+  border: 1px solid #b6d3ee;
+  border-radius: 4px;
+  box-shadow: 0 3px 9px rgba(16, 47, 77, 0.16);
+  box-sizing: border-box;
+  display: grid;
+  gap: 2px;
+  left: 0;
+  min-width: 270px;
+  padding: 4px;
+  position: absolute;
+  top: calc(100% + 4px);
+  z-index: 10;
+}
+
+#sipac-pr-document-summary .sipac-pr-share-popover[hidden] {
+  display: none;
+}
+
+#sipac-pr-document-summary .sipac-pr-share-popover button {
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  color: #17395c;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+#sipac-pr-document-summary .sipac-pr-share-popover button:hover {
+  background: #e8f2fb;
+}
+
+#sipac-pr-document-summary .sipac-pr-share-popover .fa {
+  color: #657789;
+  margin-right: 5px;
+}
+
 #sipac-pr-document-summary .sipac-pr-doc-detail,
 #sipac-pr-process-result .sipac-pr-process-detail {
   color: #102f4d;
