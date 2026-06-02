@@ -77,6 +77,66 @@
   color: #1f5e99;
 }
 
+#sipac-pr-consultation-history {
+  box-sizing: border-box;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin: 0 auto 16px;
+  max-width: 760px;
+  width: 90%;
+}
+
+#sipac-pr-consultation-history .sipac-pr-history-section {
+  min-width: 0;
+}
+
+#sipac-pr-consultation-history h3 {
+  border-bottom: 1px solid #b6d3ee;
+  color: #17395c;
+  font-size: 13px;
+  margin: 0 0 6px;
+  padding-bottom: 5px;
+}
+
+#sipac-pr-consultation-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#sipac-pr-consultation-history li {
+  border-bottom: 1px solid #e1e9f0;
+  padding: 6px 0;
+}
+
+#sipac-pr-consultation-history a {
+  color: #1f5e99;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+#sipac-pr-consultation-history a:hover {
+  color: #174f82;
+  text-decoration: underline;
+}
+
+#sipac-pr-consultation-history li div,
+#sipac-pr-consultation-history .sipac-pr-history-empty {
+  color: #4b6073;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+  #sipac-pr-consultation-history {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .sipac-pr-portal-access-link {
   background: #1f5e99;
   border: 1px solid #164a7a;

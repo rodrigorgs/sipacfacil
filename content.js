@@ -5,6 +5,8 @@
   const LAST_SEARCH_KEY = "sipacProtocoloRapido:lastSearch";
   const PENDING_AUTH_SEARCH_KEY = "sipacProtocoloRapido:pendingAuthSearch";
   const DOCUMENT_ID_CACHE_KEY = "sipacProtocoloRapido:documentIdCache";
+  const CONSULTATION_HISTORY_KEY = "sipacProtocoloRapido:consultationHistory";
+  const HISTORY_LIMIT = 10;
   const AUTO_OPEN_WINDOW_MS = 15000;
   const ADMIN_PORTAL_URL = "/sipac/portal_administrativo/index.jsf";
   const AUTH_SEARCH_URLS = {
@@ -139,6 +141,114 @@
 
   function getDocumentInfoUrlById(idDoc) {
     return `/sipac/protocolo/consulta/info_documento.jsf?idDoc=${encodeURIComponent(idDoc)}`;
+  }
+
+  function getConsultationHistory() {
+    try {
+      const raw = localStorage.getItem(CONSULTATION_HISTORY_KEY);
+      const history = raw ? JSON.parse(raw) : {};
+
+      return {
+        document: Array.isArray(history.document) ? history.document : [],
+        process: Array.isArray(history.process) ? history.process : []
+      };
+    } catch (_error) {
+      return { document: [], process: [] };
+    }
+  }
+
+  function getProtocolFromText(value) {
+    const match = String(value || "").match(/\d{5,7}\.\d{1,8}\/\d{4}-\d{2}/);
+    return match ? match[0] : String(value || "").trim();
+  }
+
+  function recordConsultation(target, protocol, detailedSubject, options) {
+    const normalizedProtocol = getProtocolFromText(protocol);
+    if (!normalizedProtocol || !detailedSubject || !["document", "process"].includes(target)) {
+      return;
+    }
+
+    try {
+      const history = getConsultationHistory();
+      const entry = {
+        protocol: normalizedProtocol,
+        detailedSubject: String(detailedSubject).trim(),
+        idDoc: options && options.idDoc ? String(options.idDoc) : "",
+        at: Date.now()
+      };
+
+      history[target] = [
+        entry,
+        ...history[target].filter((item) => onlyDigits(item.protocol) !== onlyDigits(normalizedProtocol))
+      ].slice(0, HISTORY_LIMIT);
+
+      localStorage.setItem(CONSULTATION_HISTORY_KEY, JSON.stringify(history));
+      renderConsultationHistory();
+    } catch (_error) {
+      // History is a convenience feature; navigation still works without it.
+    }
+  }
+
+  function getHistoryItemUrl(target, item) {
+    if (target === "document" && item.idDoc) {
+      return getDocumentInfoUrlById(item.idDoc);
+    }
+
+    const url = new URL(ADMIN_PORTAL_URL, location.origin);
+    url.searchParams.set(target === "document" ? "doc" : "proc", item.protocol);
+    return url.href;
+  }
+
+  function createHistoryList(target, items) {
+    const section = document.createElement("section");
+    section.className = "sipac-pr-history-section";
+
+    const title = document.createElement("h3");
+    title.textContent = target === "document" ? "Documentos recentes" : "Processos recentes";
+    section.appendChild(title);
+
+    if (!items.length) {
+      const empty = document.createElement("div");
+      empty.className = "sipac-pr-history-empty";
+      empty.textContent = "Nenhuma consulta registrada.";
+      section.appendChild(empty);
+      return section;
+    }
+
+    const list = document.createElement("ul");
+    items.forEach((item) => {
+      const listItem = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = getHistoryItemUrl(target, item);
+      link.textContent = item.protocol;
+      const subject = document.createElement("div");
+      subject.textContent = item.detailedSubject;
+      listItem.append(link, subject);
+      list.appendChild(listItem);
+    });
+    section.appendChild(list);
+    return section;
+  }
+
+  function renderConsultationHistory(widget) {
+    const container =
+      document.getElementById("sipac-pr-consultation-history") ||
+      (widget && document.createElement("section"));
+
+    if (!container) {
+      return;
+    }
+
+    if (!container.id) {
+      container.id = "sipac-pr-consultation-history";
+      widget.insertAdjacentElement("afterend", container);
+    }
+
+    const history = getConsultationHistory();
+    container.replaceChildren(
+      createHistoryList("document", history.document),
+      createHistoryList("process", history.process)
+    );
   }
 
   function parseProtocol(value) {
@@ -528,6 +638,7 @@
       anchor.insertAdjacentElement("afterbegin", widget);
     }
 
+    renderConsultationHistory(widget);
     return true;
   }
 
@@ -706,6 +817,10 @@
 
     const summary = document.createElement("section");
     summary.id = "sipac-pr-process-result";
+
+    if (protocolField && protocolField.value && detailField && detailField.value) {
+      recordConsultation("process", protocolField.value, detailField.value);
+    }
 
     const title = document.createElement("div");
     title.className = "sipac-pr-process-detail";
@@ -1178,6 +1293,12 @@
 
     if (!protocol && !detailedSubject && !subject && !primaryAction && !pdfAction && !signatures.totalCount && !destination) {
       return;
+    }
+
+    if (protocol && detailedSubject) {
+      recordConsultation("document", protocol, detailedSubject, {
+        idDoc: getDocumentIdFromLocation()
+      });
     }
 
     const summary = document.createElement("section");

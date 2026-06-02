@@ -27,6 +27,8 @@ Ao colar um protocolo no Portal Administrativo, a extensão:
 3. preenche os campos internos do formulário autenticado;
 4. submete a busca usando a sessão já autenticada do navegador.
 
+No Portal Administrativo, a extensão também exibe os últimos 10 documentos e processos consultados. O histórico fica armazenado localmente no navegador e apresenta links diretos para cada protocolo.
+
 ## Instalação local
 
 1. Abra `chrome://extensions`.
