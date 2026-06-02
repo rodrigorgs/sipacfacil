@@ -696,16 +696,21 @@
   }
 
   function insertPortalAccessButton(widget, isAuthenticated) {
-    if (!widget || document.querySelector("[data-sipac-portal-access-link]")) {
+    if (!widget) {
       return;
     }
 
-    const link = document.createElement("a");
-    link.className = "sipac-pr-portal-access-link";
-    link.dataset.sipacPortalAccessLink = "true";
+    let link = document.querySelector("[data-sipac-portal-access-link]");
+    if (!link) {
+      link = document.createElement("a");
+      link.className = "sipac-pr-portal-access-link";
+      link.dataset.sipacPortalAccessLink = "true";
+    }
+
+    widget.appendChild(link);
+    widget.dataset.sipacPortalAuthenticated = String(Boolean(isAuthenticated));
     link.href = isAuthenticated ? ADMIN_PORTAL_URL : "/sipac/";
     link.textContent = isAuthenticated ? "Acessar Portal Administrativo" : "Entrar no sistema";
-    widget.insertAdjacentElement("afterend", link);
   }
 
   async function insertPortalAccessButtonForSession(widget) {
@@ -742,12 +747,27 @@
       return false;
     }
 
+    [
+      editaisBox,
+      editaisBox.closest("dt"),
+      editaisBox.closest("dl.editais"),
+      editaisBox.closest("#p-comunicados")
+    ]
+      .filter(Boolean)
+      .forEach((element) => element.classList.add("sipac-pr-public-expanded"));
+
     const widget = createWidget("public");
     editaisTitle.insertAdjacentElement("afterend", widget);
     ensurePublicConsultationHistory(widget);
+    insertPortalAccessButton(widget, false);
     insertPortalAccessButtonForSession(widget).then(() => ensurePublicConsultationHistory(widget));
 
-    const observer = new MutationObserver(() => ensurePublicConsultationHistory(widget));
+    const observer = new MutationObserver(() => {
+      ensurePublicConsultationHistory(widget);
+      if (!document.querySelector("[data-sipac-portal-access-link]")) {
+        insertPortalAccessButton(widget, widget.dataset.sipacPortalAuthenticated === "true");
+      }
+    });
     observer.observe(editaisBox, { childList: true, subtree: true });
     return true;
   }
