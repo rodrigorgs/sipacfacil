@@ -6,6 +6,7 @@
   const PENDING_AUTH_SEARCH_KEY = "sipacProtocoloRapido:pendingAuthSearch";
   const DOCUMENT_ID_CACHE_KEY = "sipacProtocoloRapido:documentIdCache";
   const AUTO_OPEN_WINDOW_MS = 15000;
+  const ADMIN_PORTAL_URL = "/sipac/portal_administrativo/index.jsf";
   const AUTH_SEARCH_URLS = {
     document: "/sipac/protocolo/consulta/consulta_documento.jsf",
     process: "/sipac/protocolo/consulta/consulta_processo.jsf"
@@ -441,6 +442,49 @@
     return container;
   }
 
+  function isAuthenticatedAdminPortalResponse(response, html) {
+    const finalUrl = new URL(response.url);
+    const hasAdminPortalMarker =
+      /id=["']formmenuadm["']/i.test(html) ||
+      /portal_administrativo\/include\/portal_administrativo\.css/i.test(html);
+
+    return (
+      response.ok &&
+      hasAdminPortalMarker &&
+      finalUrl.hostname === location.hostname &&
+      (finalUrl.pathname === ADMIN_PORTAL_URL ||
+        finalUrl.pathname === "/sipac/menuUnidade.do" ||
+        finalUrl.pathname.startsWith("/sipac/portal_administrativo/"))
+    );
+  }
+
+  function insertPortalAccessButton(widget, isAuthenticated) {
+    if (!widget || document.querySelector("[data-sipac-portal-access-link]")) {
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.className = "sipac-pr-portal-access-link";
+    link.dataset.sipacPortalAccessLink = "true";
+    link.href = isAuthenticated ? ADMIN_PORTAL_URL : "/sipac/";
+    link.textContent = isAuthenticated ? "Acessar Portal Administrativo" : "Entrar no sistema";
+    widget.insertAdjacentElement("afterend", link);
+  }
+
+  async function insertPortalAccessButtonForSession(widget) {
+    try {
+      const response = await fetch(ADMIN_PORTAL_URL, {
+        credentials: "include",
+        cache: "no-store"
+      });
+      const html = await response.text();
+
+      insertPortalAccessButton(widget, isAuthenticatedAdminPortalResponse(response, html));
+    } catch (_error) {
+      insertPortalAccessButton(widget, false);
+    }
+  }
+
   function insertPublicWidget() {
     const editaisBox = document.querySelector("#p-comunicados div.editais");
     const editaisTitle = editaisBox && editaisBox.querySelector("h3");
@@ -449,7 +493,9 @@
       return false;
     }
 
-    editaisTitle.insertAdjacentElement("afterend", createWidget("public"));
+    const widget = createWidget("public");
+    editaisTitle.insertAdjacentElement("afterend", widget);
+    insertPortalAccessButtonForSession(widget);
     return true;
   }
 

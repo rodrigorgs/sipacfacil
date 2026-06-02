@@ -4,6 +4,8 @@ Extensão Chrome MV3 que adiciona um campo de consulta rápida de número de pro
 
 No portal público, o painel aparece na área de **Editais Recentes**. No Portal Administrativo autenticado, o painel aparece no topo do conteúdo e usa a sessão do usuário logado.
 
+No portal público, abaixo do painel, a extensão exibe um botão para acessar diretamente o Portal Administrativo quando o usuário já está autenticado. Caso contrário, exibe um botão para entrar no sistema.
+
 O painel tem duas buscas independentes:
 
 - **Processo**, para números de protocolo associados a processos.
